@@ -176,6 +176,13 @@ When changing behavior, keep the docs in sync:
 - Treat `PLAN.md` as the source of truth for current phase, status, and
   release sequence.
 - Update `PLAN.md` when phase status, scope, or validation criteria change.
+- When a `PLAN.md` deliverable is finished, prefix that bullet with
+  `Completed:` while preserving the original item text.
+- When a `PLAN.md` validation criterion has passed, prefix that bullet with
+  `Completed:` while preserving the original item text.
+- Only mark deliverables or validation criteria as `Completed:` after the
+  implementation is present and the relevant check has actually been run or
+  otherwise verified.
 - Update `EdgeFleet.md` if product positioning or architecture changes.
 - Add or update `README.md` once implementation begins.
 - Document required environment variables, ports, credentials, and local demo

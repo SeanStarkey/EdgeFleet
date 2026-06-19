@@ -141,19 +141,24 @@ The complete demo will run a simulated fleet of 50 to 100 agents and show:
 
 ## Project Status
 
-EdgeFleet is currently in the planning and foundation stage. The implementation
-roadmap lives in [PLAN.md](PLAN.md).
+EdgeFleet is currently in the foundation stage. The implementation roadmap
+lives in [PLAN.md](PLAN.md).
 
-The first milestone is a small vertical slice:
+The Rust workspace has been scaffolded with:
 
-- Rust workspace.
-- Shared telemetry types.
-- Control plane scaffold.
-- Agent scaffold.
+- `crates/edgefleet-types`: shared telemetry, registration, heartbeat, command,
+  and OTA wire models.
+- `crates/edge-agent`: edge agent binary scaffold.
+- `crates/control-plane`: control plane binary scaffold and initial API route
+  outline.
+- `crates/fleet-simulator`: local simulator tooling scaffold.
+
+The remaining first milestone work is:
+
 - Dashboard scaffold.
 - Docker Compose infrastructure.
 - One simulated device registering, sending a heartbeat, and emitting one
-  telemetry event.
+  telemetry event against the control plane.
 
 ## Roadmap
 
@@ -172,13 +177,26 @@ See [PLAN.md](PLAN.md) for phase details and validation criteria.
 
 ## Development
 
-Implementation has not been scaffolded yet. Once the Rust workspace and
-dashboard exist, the expected development commands will be:
+Run the Rust workspace checks with:
 
 ```bash
 cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+```
+
+The current scaffold binaries can be run directly:
+
+```bash
+cargo run -p control-plane
+cargo run -p edge-agent
+cargo run -p fleet-simulator
+```
+
+Once Docker Compose and the dashboard exist, the expected local stack commands
+will be:
+
+```bash
 docker compose up --build
 ```
 

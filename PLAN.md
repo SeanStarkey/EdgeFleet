@@ -41,24 +41,29 @@ The project is complete when a reviewer can:
 Goal: create the repository shape, development workflow, and architectural
 contracts that the rest of the project can build on.
 
+Current status: in progress. The Rust workspace now exists with crates for the
+edge agent, control plane, shared wire types, and fleet simulator tooling. The
+shared crate includes initial telemetry, registration, heartbeat, command, and
+OTA metadata contracts.
+
 Deliverables:
 
-- Rust workspace with crates for `edge-agent`, `control-plane`, shared types,
-  and simulator tooling.
+- Completed: Rust workspace with crates for `edge-agent`, `control-plane`,
+  shared types, and simulator tooling.
 - Dashboard app scaffold.
 - Docker Compose file for local PostgreSQL, NATS, control plane, dashboard, and
   simulated agents.
-- Shared telemetry envelope model with typed operational fields and flexible
-  `serde_json::Value` payloads.
-- Initial API contract for device registration, telemetry ingestion, heartbeats,
-  commands, and OTA metadata.
+- Completed: Shared telemetry envelope model with typed operational fields and
+  flexible `serde_json::Value` payloads.
+- Completed: Initial API contract for device registration, telemetry ingestion,
+  heartbeats, commands, and OTA metadata.
 - Repository documentation: README, architecture overview, local development
   guide, and contribution notes.
 - GitHub Actions workflow for format, lint, tests, and build checks.
 
 Validation:
 
-- `cargo fmt`, `cargo clippy`, and `cargo test` pass.
+- Completed: `cargo fmt`, `cargo clippy`, and `cargo test` pass.
 - Dashboard scaffold starts locally.
 - Docker Compose starts the empty infrastructure stack.
 
