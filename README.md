@@ -44,86 +44,10 @@ commands, and perform an OTA rollout from the dashboard.
 
 ## Architecture
 
-EdgeFleet is planned as four main components.
-
-### Edge Agent
-
-A lightweight Rust agent that runs on edge devices.
-
-Responsibilities:
-
-- Device registration and authentication.
-- Telemetry collection.
-- Heartbeats and health reporting.
-- Local SQLite buffering during outages.
-- Automatic reconnect with backoff.
-- Idempotent replay after reconnect.
-- Remote command handling.
-- Signed OTA update verification.
-
-Planned technologies: Tokio, serde, tracing, rustls, SQLite, and an HTTP client
-stack suitable for Axum-based services.
-
-### Control Plane API
-
-The central service for fleet state and orchestration.
-
-Responsibilities:
-
-- Device registry.
-- Telemetry ingestion.
-- Heartbeat tracking.
-- Fleet status.
-- Command dispatch.
-- OTA rollout orchestration.
-- Dashboard event streams.
-- Health, readiness, metrics, and tracing endpoints.
-
-Planned technologies: Axum, PostgreSQL, NATS, OpenTelemetry, and tracing.
-
-### Messaging Layer
-
-NATS is planned as the event backbone for telemetry fanout, device state
-changes, and command delivery.
-
-### Dashboard
-
-A React and Tailwind dashboard for operators.
-
-Planned views:
-
-- Fleet overview.
-- Device details.
-- Live telemetry.
-- Queue and replay status.
-- Remote command history.
-- OTA rollout progress.
-- System health and observability links.
-
-## Telemetry Model
-
-Telemetry uses a stable envelope with an open-ended JSON payload. The platform
-keeps operational fields typed while allowing each device type to report its own
-domain-specific readings.
-
-```json
-{
-  "device_id": "edge-042",
-  "event_id": "01JZ9X6N9VD4Y7Y3P2Z5F8K4QG",
-  "timestamp": "2026-06-18T19:42:10Z",
-  "type": "sensor.reading",
-  "schema_version": 1,
-  "payload": {
-    "temperature_c": 41.2,
-    "humidity": 0.61,
-    "fan_rpm": 2380,
-    "custom_field": "device-specific value"
-  }
-}
-```
-
-The `event_id` is part of the reliability story: it allows the control plane to
-deduplicate telemetry during retries, reconnects, and offline replay.
+EdgeFleet is planned around an edge agent, control plane, messaging layer,
+operator dashboard, and simulator. The detailed system design, component
+boundaries, data flows, telemetry contract, reliability rules, and phase
+boundaries live in [docs/architecture.md](docs/architecture.md).
 
 ## Planned Demo
 
@@ -162,18 +86,8 @@ The remaining first milestone work is:
 
 ## Roadmap
 
-| Release | Focus |
-| --- | --- |
-| `v0.1.0-foundation` | Workspace, architecture contracts, CI, local infrastructure |
-| `v0.2.0-mvp` | Registration, telemetry ingestion, live dashboard, simulator |
-| `v0.3.0-reliability` | Offline queue, reconnect, replay, failure simulation |
-| `v0.4.0-operations` | NATS, remote commands, metrics, tracing, health endpoints |
-| `v0.5.0-ota` | Signed OTA artifacts, canaries, rollback, rollout dashboard |
-| `v0.8.0-demo` | 50-100 agent simulation, polished dashboard, docs, benchmarks |
-| `v1.0.0-rc.1` | Security pass, deployment guide, end-to-end release checklist |
-| `v1.0.0` | Stable tagged release, Docker images, final demo assets |
-
-See [PLAN.md](PLAN.md) for phase details and validation criteria.
+The implementation roadmap, phase details, validation criteria, and release
+sequence live in [PLAN.md](PLAN.md).
 
 ## Development
 
@@ -259,28 +173,16 @@ Before changing behavior, check [PLAN.md](PLAN.md) for the current phase and
 validation criteria. Keep Phase 0 work focused on repository foundation,
 contracts, local development, and scaffolding.
 
-When changing shared API or event contracts:
-
-- Put reusable wire types in `crates/edgefleet-types`.
-- Keep operational telemetry fields typed and device-specific readings in
-  `serde_json::Value`.
-- Preserve `event_id` as the idempotency key for retries, replay, and duplicate
-  delivery.
-- Add or update focused tests for validation and serialization behavior.
-
-When changing documentation or local workflow:
-
-- Keep this README accurate for clean-checkout setup.
-- Update [CONTRIBUTING.md](CONTRIBUTING.md) if contributor expectations change.
-- Update [EdgeFleet.md](EdgeFleet.md) if product positioning or architecture
-  changes.
-- Update [PLAN.md](PLAN.md) when phase status, scope, or validation status
-  changes.
+Use [docs/architecture.md](docs/architecture.md) for system boundaries and
+contract rules. Use [CONTRIBUTING.md](CONTRIBUTING.md) for contributor workflow,
+testing expectations, and documentation update rules.
 
 ## Documentation
 
 - [PLAN.md](PLAN.md): execution roadmap, phases, release sequence, validation
   gates.
+- [docs/architecture.md](docs/architecture.md): system architecture, component
+  boundaries, data flows, reliability rules, and phase boundaries.
 - [EdgeFleet.md](EdgeFleet.md): product positioning, architecture notes, and
   original project concept.
 - [CONTRIBUTING.md](CONTRIBUTING.md): contribution workflow, local checks, and
