@@ -209,6 +209,8 @@ created.
   gates.
 - [EdgeFleet.md](EdgeFleet.md): product positioning, architecture notes, and
   original project concept.
+- [CONTRIBUTING.md](CONTRIBUTING.md): contribution workflow, local checks, and
+  documentation expectations.
 - [AGENTS.md](AGENTS.md): guidance for coding agents working in this repository.
 
 ## License
