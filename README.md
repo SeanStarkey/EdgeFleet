@@ -177,7 +177,25 @@ See [PLAN.md](PLAN.md) for phase details and validation criteria.
 
 ## Development
 
-Run the Rust workspace checks with:
+### Prerequisites
+
+Install:
+
+- Rust `1.95` or newer. The workspace uses Rust 2024 edition.
+- `rustfmt` and `clippy`, usually installed with the standard Rust toolchain.
+- Docker with Docker Compose, once the local infrastructure stack is added.
+- Node.js and npm, once the dashboard scaffold is added.
+
+From a clean checkout, verify the Rust toolchain with:
+
+```bash
+rustc --version
+cargo --version
+```
+
+### First-Time Setup
+
+Clone the repository and run the Rust checks from the repository root:
 
 ```bash
 cargo fmt --all
@@ -185,7 +203,17 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-The current scaffold binaries can be run directly:
+These commands are the current baseline for Phase 0 work. They format the
+workspace, compile all targets under Clippy with warnings treated as errors, and
+run the shared type tests.
+
+### Running The Current Scaffold
+
+The repository currently contains Rust scaffolds for the control plane, edge
+agent, shared wire types, and fleet simulator. The binaries do not start network
+listeners yet; they print representative route, registration, heartbeat, and
+telemetry payloads so the shared contracts can be exercised while the API and
+runtime pieces are being built.
 
 ```bash
 cargo run -p control-plane
@@ -193,15 +221,61 @@ cargo run -p edge-agent
 cargo run -p fleet-simulator
 ```
 
-Once Docker Compose and the dashboard exist, the expected local stack commands
-will be:
+Expected output:
+
+- `control-plane` prints the planned health, registration, telemetry,
+  heartbeat, command, and OTA metadata routes plus example registration JSON.
+- `edge-agent` prints a sample heartbeat and telemetry event for a local
+  development device.
+- `fleet-simulator` generates sample telemetry events for three simulated
+  devices.
+
+### Local Stack Status
+
+The Phase 0 Docker Compose stack and dashboard scaffold are still planned work.
+After they exist, the local stack will include PostgreSQL, NATS, the control
+plane, dashboard, and simulated agents, and the expected command will be:
 
 ```bash
 docker compose up --build
 ```
 
-Dashboard-specific commands will be documented after the frontend scaffold is
+Dashboard-specific commands such as `npm install`, `npm run lint`, `npm run
+test`, and `npm run build` will be documented after the frontend scaffold is
 created.
+
+### Configuration
+
+The current Rust scaffolds do not require environment variables, local
+credentials, databases, NATS, or signing keys. As those pieces are introduced,
+this README will document required variables, default ports, credentials for
+local-only development, and demo startup steps.
+
+Do not commit local secrets, signing keys, or machine-specific configuration.
+
+### Development Workflow
+
+Before changing behavior, check [PLAN.md](PLAN.md) for the current phase and
+validation criteria. Keep Phase 0 work focused on repository foundation,
+contracts, local development, and scaffolding.
+
+When changing shared API or event contracts:
+
+- Put reusable wire types in `crates/edgefleet-types`.
+- Keep operational telemetry fields typed and device-specific readings in
+  `serde_json::Value`.
+- Preserve `event_id` as the idempotency key for retries, replay, and duplicate
+  delivery.
+- Add or update focused tests for validation and serialization behavior.
+
+When changing documentation or local workflow:
+
+- Keep this README accurate for clean-checkout setup.
+- Update [CONTRIBUTING.md](CONTRIBUTING.md) if contributor expectations change.
+- Update [EdgeFleet.md](EdgeFleet.md) if product positioning or architecture
+  changes.
+- Update [PLAN.md](PLAN.md) when phase status, scope, or validation status
+  changes.
 
 ## Documentation
 

@@ -57,8 +57,8 @@ Deliverables:
   flexible `serde_json::Value` payloads.
 - Completed: Initial API contract for device registration, telemetry ingestion,
   heartbeats, commands, and OTA metadata.
-- Repository documentation: README, architecture overview, local development
-  guide, and contribution notes.
+- Completed: Repository documentation: README, architecture overview, local
+  development guide, and contribution notes.
 - GitHub Actions workflow for format, lint, tests, and build checks.
 
 Validation:
