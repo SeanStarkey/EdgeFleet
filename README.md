@@ -120,6 +120,16 @@ These commands are the current baseline for Phase 0 work. They format the
 workspace, compile all targets under Clippy with warnings treated as errors, and
 run the shared type tests.
 
+GitHub Actions runs the same Rust 1.95 workspace checks on pushes to `main` and
+pull requests, plus an explicit locked workspace build:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+cargo build --workspace --all-targets --locked
+```
+
 ### Running The Current Scaffold
 
 The repository currently contains Rust scaffolds for the control plane, edge

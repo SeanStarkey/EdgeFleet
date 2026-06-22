@@ -89,7 +89,11 @@ before submitting:
 cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+cargo build --workspace --all-targets
 ```
+
+GitHub Actions runs the Phase 0 Rust checks on pushes to `main` and pull
+requests, using the workspace lockfile for lint, test, and build steps.
 
 As the project grows, add focused tests for shared type validation, queue
 behavior, retry policy, telemetry replay, registration, heartbeat ingestion,

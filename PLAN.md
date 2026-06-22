@@ -60,7 +60,7 @@ Deliverables:
   heartbeats, commands, and OTA metadata.
 - Completed: Repository documentation: README, architecture overview, local
   development guide, and contribution notes.
-- GitHub Actions workflow for format, lint, tests, and build checks.
+- Completed: GitHub Actions workflow for format, lint, tests, and build checks.
 
 Validation:
 
