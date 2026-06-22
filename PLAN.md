@@ -44,15 +44,16 @@ contracts that the rest of the project can build on.
 Current status: in progress. The Rust workspace now exists with crates for the
 edge agent, control plane, shared wire types, and fleet simulator tooling. The
 shared crate includes initial telemetry, registration, heartbeat, command, and
-OTA metadata contracts.
+OTA metadata contracts. The Phase 0 Docker Compose file now defines the local
+PostgreSQL, NATS, Rust scaffold services, and dashboard profile service shape.
 
 Deliverables:
 
 - Completed: Rust workspace with crates for `edge-agent`, `control-plane`,
   shared types, and simulator tooling.
 - Dashboard app scaffold.
-- Docker Compose file for local PostgreSQL, NATS, control plane, dashboard, and
-  simulated agents.
+- Completed: Docker Compose file for local PostgreSQL, NATS, control plane,
+  dashboard, and simulated agents.
 - Completed: Shared telemetry envelope model with typed operational fields and
   flexible `serde_json::Value` payloads.
 - Completed: Initial API contract for device registration, telemetry ingestion,
@@ -65,7 +66,7 @@ Validation:
 
 - Completed: `cargo fmt`, `cargo clippy`, and `cargo test` pass.
 - Dashboard scaffold starts locally.
-- Docker Compose starts the empty infrastructure stack.
+- Completed: Docker Compose starts the empty infrastructure stack.
 
 Target release: `v0.1.0-foundation`
 

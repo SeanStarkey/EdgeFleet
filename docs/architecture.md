@@ -21,10 +21,13 @@ The repository currently contains a Rust workspace with these crates:
 | `control-plane` | Control plane scaffold that documents planned routes and sample registration payloads. |
 | `fleet-simulator` | Simulator scaffold that generates sample telemetry for local devices. |
 
-The dashboard, Docker Compose stack, PostgreSQL persistence, NATS integration,
-and real HTTP listeners are planned work. Until those pieces exist, architecture
-changes should keep the contracts and crate boundaries ready for them without
-pretending the runtime stack is already complete.
+The dashboard, PostgreSQL persistence, NATS integration, and real HTTP listeners
+are planned work. The repository now includes a Phase 0 Docker Compose stack
+with PostgreSQL, NATS, Rust scaffold services, and a dashboard profile stub so
+the local service shape exists before the full runtime is implemented. Until
+those pieces exist, architecture changes should keep the contracts and crate
+boundaries ready for them without pretending the runtime stack is already
+complete.
 
 ## System Overview
 

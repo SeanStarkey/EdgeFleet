@@ -80,7 +80,6 @@ The Rust workspace has been scaffolded with:
 The remaining first milestone work is:
 
 - Dashboard scaffold.
-- Docker Compose infrastructure.
 - One simulated device registering, sending a heartbeat, and emitting one
   telemetry event against the control plane.
 
@@ -97,7 +96,7 @@ Install:
 
 - Rust `1.95` or newer. The workspace uses Rust 2024 edition.
 - `rustfmt` and `clippy`, usually installed with the standard Rust toolchain.
-- Docker with Docker Compose, once the local infrastructure stack is added.
+- Docker with Docker Compose for the local infrastructure stack.
 - Node.js and npm, once the dashboard scaffold is added.
 
 From a clean checkout, verify the Rust toolchain with:
@@ -144,14 +143,34 @@ Expected output:
 - `fleet-simulator` generates sample telemetry events for three simulated
   devices.
 
-### Local Stack Status
+### Local Stack
 
-The Phase 0 Docker Compose stack and dashboard scaffold are still planned work.
-After they exist, the local stack will include PostgreSQL, NATS, the control
-plane, dashboard, and simulated agents, and the expected command will be:
+The Phase 0 Docker Compose stack lives in [compose.yaml](compose.yaml). It
+starts local PostgreSQL and NATS infrastructure, then runs the current Rust
+control-plane, edge-agent, and fleet-simulator scaffold binaries in containers:
 
 ```bash
 docker compose up --build
+```
+
+The Rust binaries are still scaffold programs, not long-running network
+services. They print representative payloads and exit successfully while the
+real API runtime is being built.
+
+Default local ports:
+
+- PostgreSQL: `localhost:5432`
+- NATS client port: `localhost:4222`
+- NATS monitoring: `localhost:8222`
+- Control plane API placeholder: `localhost:8080`
+- Dashboard dev server placeholder: `localhost:5173`
+
+The compose file includes a dashboard service behind the `dashboard` profile so
+the service shape is reserved without breaking the default stack before the
+frontend scaffold exists:
+
+```bash
+docker compose --profile dashboard up --build
 ```
 
 Dashboard-specific commands such as `npm install`, `npm run lint`, `npm run
@@ -161,9 +180,13 @@ created.
 ### Configuration
 
 The current Rust scaffolds do not require environment variables, local
-credentials, databases, NATS, or signing keys. As those pieces are introduced,
-this README will document required variables, default ports, credentials for
-local-only development, and demo startup steps.
+credentials, databases, NATS, or signing keys when run directly with Cargo. The
+Compose stack provides local-only defaults for the future runtime:
+
+- `EDGEFLEET_DATABASE_URL=postgres://edgefleet:edgefleet-dev@postgres:5432/edgefleet`
+- `EDGEFLEET_NATS_URL=nats://nats:4222`
+- `EDGEFLEET_BIND_ADDR=0.0.0.0:8080`
+- `EDGEFLEET_CONTROL_PLANE_URL=http://control-plane:8080`
 
 Do not commit local secrets, signing keys, or machine-specific configuration.
 
