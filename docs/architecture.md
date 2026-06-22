@@ -21,13 +21,12 @@ The repository currently contains a Rust workspace with these crates:
 | `control-plane` | Control plane scaffold that documents planned routes and sample registration payloads. |
 | `fleet-simulator` | Simulator scaffold that generates sample telemetry for local devices. |
 
-The dashboard, PostgreSQL persistence, NATS integration, and real HTTP listeners
-are planned work. The repository now includes a Phase 0 Docker Compose stack
-with PostgreSQL, NATS, Rust scaffold services, and a dashboard profile stub so
-the local service shape exists before the full runtime is implemented. Until
-those pieces exist, architecture changes should keep the contracts and crate
-boundaries ready for them without pretending the runtime stack is already
-complete.
+The repository now includes a Phase 0 dashboard scaffold alongside PostgreSQL,
+NATS, Rust scaffold services, and the Compose dashboard profile. PostgreSQL
+persistence, NATS integration, real HTTP listeners, and live dashboard data are
+planned work. Until those pieces exist, architecture changes should keep the
+contracts and crate boundaries ready for them without pretending the runtime
+stack is already complete.
 
 ## System Overview
 
@@ -49,7 +48,7 @@ flowchart LR
     end
 
     subgraph Operations["Operator Surface"]
-        Dash["Dashboard\nReact + Tailwind planned"]
+        Dash["Dashboard\nReact + Tailwind scaffold"]
         Obs["Observability\nlogs, metrics, traces"]
     end
 
@@ -137,10 +136,12 @@ Over time it should support:
 
 ### Dashboard
 
-The dashboard is an operator tool, not a marketing surface. It should optimize
-for dense, readable fleet state and workflows an operator would naturally need:
-device inventory, stale-device status, live telemetry, queue depth, command
-history, rollout progress, and observability links.
+The dashboard is an operator tool, not a marketing surface. The Phase 0
+scaffold uses React, TypeScript, Tailwind, Vite, and static mock fleet data to
+reserve the operator surface before live APIs exist. It should continue to
+optimize for dense, readable fleet state and workflows an operator would
+naturally need: device inventory, stale-device status, live telemetry, queue
+depth, command history, rollout progress, and observability links.
 
 ## Core Data Flows
 

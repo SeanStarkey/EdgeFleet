@@ -91,7 +91,7 @@ services:
       - -c
       - |
         if [ -f package.json ]; then
-          npm install
+          npm ci
           npm run dev -- --host 0.0.0.0
         else
           echo "Dashboard scaffold is not present yet; enable this service after the Phase 0 dashboard scaffold lands."

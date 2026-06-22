@@ -76,10 +76,11 @@ The Rust workspace has been scaffolded with:
 - `crates/control-plane`: control plane binary scaffold and initial API route
   outline.
 - `crates/fleet-simulator`: local simulator tooling scaffold.
+- `dashboard`: React, TypeScript, Tailwind, and Vite dashboard scaffold for the
+  operator surface.
 
 The remaining first milestone work is:
 
-- Dashboard scaffold.
 - One simulated device registering, sending a heartbeat, and emitting one
   telemetry event against the control plane.
 
@@ -130,6 +131,16 @@ cargo test --workspace --locked
 cargo build --workspace --all-targets --locked
 ```
 
+The dashboard scaffold is checked separately with Node.js 22:
+
+```bash
+cd dashboard
+npm ci
+npm run lint
+npm run test
+npm run build
+```
+
 ### Running The Current Scaffold
 
 The repository currently contains Rust scaffolds for the control plane, edge
@@ -167,25 +178,33 @@ The Rust binaries are still scaffold programs, not long-running network
 services. They print representative payloads and exit successfully while the
 real API runtime is being built.
 
+Run the dashboard scaffold locally with:
+
+```bash
+cd dashboard
+npm ci
+npm run dev
+```
+
+The Vite dev server listens on `http://127.0.0.1:5173/` by default. The
+dashboard reads `VITE_EDGEFLEET_API_URL`, which defaults to
+`http://localhost:8080` when unset.
+
 Default local ports:
 
 - PostgreSQL: `localhost:5432`
 - NATS client port: `localhost:4222`
 - NATS monitoring: `localhost:8222`
 - Control plane API placeholder: `localhost:8080`
-- Dashboard dev server placeholder: `localhost:5173`
+- Dashboard dev server: `localhost:5173`
 
-The compose file includes a dashboard service behind the `dashboard` profile so
-the service shape is reserved without breaking the default stack before the
-frontend scaffold exists:
+The compose file includes a dashboard service behind the `dashboard` profile:
 
 ```bash
 docker compose --profile dashboard up --build
 ```
 
-Dashboard-specific commands such as `npm install`, `npm run lint`, `npm run
-test`, and `npm run build` will be documented after the frontend scaffold is
-created.
+Dashboard-specific checks live in `dashboard/package.json`.
 
 ### Configuration
 

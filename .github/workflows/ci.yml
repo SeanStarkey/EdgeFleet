@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_TOOLCHAIN: 1.95.0
+  NODE_VERSION: 22
 
 jobs:
   rust:
@@ -46,3 +47,34 @@ jobs:
 
       - name: Build workspace
         run: cargo build --workspace --all-targets --locked
+
+  dashboard:
+    name: Dashboard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Lint dashboard
+        working-directory: dashboard
+        run: npm run lint
+
+      - name: Test dashboard
+        working-directory: dashboard
+        run: npm run test
+
+      - name: Build dashboard
+        working-directory: dashboard
+        run: npm run build

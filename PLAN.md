@@ -51,7 +51,7 @@ Deliverables:
 
 - Completed: Rust workspace with crates for `edge-agent`, `control-plane`,
   shared types, and simulator tooling.
-- Dashboard app scaffold.
+- Completed: Dashboard app scaffold.
 - Completed: Docker Compose file for local PostgreSQL, NATS, control plane,
   dashboard, and simulated agents.
 - Completed: Shared telemetry envelope model with typed operational fields and
@@ -65,7 +65,7 @@ Deliverables:
 Validation:
 
 - Completed: `cargo fmt`, `cargo clippy`, and `cargo test` pass.
-- Dashboard scaffold starts locally.
+- Completed: Dashboard scaffold starts locally.
 - Completed: Docker Compose starts the empty infrastructure stack.
 
 Target release: `v0.1.0-foundation`
