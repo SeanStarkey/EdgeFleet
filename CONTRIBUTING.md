@@ -1,8 +1,8 @@
 # Contributing To EdgeFleet
 
-Thanks for helping improve EdgeFleet. This project is currently in its
-foundation phase, so the best contributions are small vertical slices that make
-the local demo more real without pulling later roadmap work into the critical
+Thanks for helping improve EdgeFleet. Phase 0 foundation work is complete, so
+the best contributions now are small Phase 1 vertical slices that make the local
+fleet telemetry demo real without pulling later roadmap work into the critical
 path.
 
 ## Project Direction
@@ -50,8 +50,19 @@ cargo run -p edge-agent
 cargo run -p fleet-simulator
 ```
 
-Docker Compose, dashboard, database, and NATS commands will be documented after
-those parts of the Phase 0 scaffold exist.
+Start the local infrastructure and scaffold services with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Run the dashboard scaffold from its workspace:
+
+```bash
+cd dashboard
+npm ci
+npm run dev
+```
 
 ## Development Guidelines
 
@@ -92,8 +103,10 @@ cargo test --workspace
 cargo build --workspace --all-targets
 ```
 
-GitHub Actions runs the Phase 0 Rust checks on pushes to `main` and pull
-requests, using the workspace lockfile for lint, test, and build steps.
+GitHub Actions runs Rust format, lint, test, and build checks on pushes to
+`main` and pull requests, using the workspace lockfile for lint, test, and build
+steps. The dashboard workflow also runs `npm ci`, lint, tests, and a production
+build.
 
 As the project grows, add focused tests for shared type validation, queue
 behavior, retry policy, telemetry replay, registration, heartbeat ingestion,

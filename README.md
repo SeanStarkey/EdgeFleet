@@ -65,8 +65,9 @@ The complete demo will run a simulated fleet of 50 to 100 agents and show:
 
 ## Project Status
 
-EdgeFleet is currently in the foundation stage. The implementation roadmap
-lives in [PLAN.md](PLAN.md).
+Phase 0 foundation work is complete and ready for the
+`v0.1.0-foundation` milestone tag. The implementation roadmap lives in
+[PLAN.md](PLAN.md).
 
 The Rust workspace has been scaffolded with:
 
@@ -79,7 +80,7 @@ The Rust workspace has been scaffolded with:
 - `dashboard`: React, TypeScript, Tailwind, and Vite dashboard scaffold for the
   operator surface.
 
-The remaining first milestone work is:
+The next active work is the first Phase 1 vertical slice:
 
 - One simulated device registering, sending a heartbeat, and emitting one
   telemetry event against the control plane.
@@ -98,7 +99,7 @@ Install:
 - Rust `1.95` or newer. The workspace uses Rust 2024 edition.
 - `rustfmt` and `clippy`, usually installed with the standard Rust toolchain.
 - Docker with Docker Compose for the local infrastructure stack.
-- Node.js and npm, once the dashboard scaffold is added.
+- Node.js and npm for dashboard development and checks.
 
 From a clean checkout, verify the Rust toolchain with:
 
@@ -117,9 +118,9 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-These commands are the current baseline for Phase 0 work. They format the
-workspace, compile all targets under Clippy with warnings treated as errors, and
-run the shared type tests.
+These commands are the current Rust baseline. They format the workspace, compile
+all targets under Clippy with warnings treated as errors, and run the shared
+type tests.
 
 GitHub Actions runs the same Rust 1.95 workspace checks on pushes to `main` and
 pull requests, plus an explicit locked workspace build:
@@ -222,8 +223,8 @@ Do not commit local secrets, signing keys, or machine-specific configuration.
 ### Development Workflow
 
 Before changing behavior, check [PLAN.md](PLAN.md) for the current phase and
-validation criteria. Keep Phase 0 work focused on repository foundation,
-contracts, local development, and scaffolding.
+validation criteria. Phase 1 work should stay focused on the first working
+registration, heartbeat, telemetry, persistence, dashboard, and simulator loop.
 
 Use [docs/architecture.md](docs/architecture.md) for system boundaries and
 contract rules. Use [CONTRIBUTING.md](CONTRIBUTING.md) for contributor workflow,
@@ -239,6 +240,7 @@ testing expectations, and documentation update rules.
   original project concept.
 - [CONTRIBUTING.md](CONTRIBUTING.md): contribution workflow, local checks, and
   documentation expectations.
+- [CHANGELOG.md](CHANGELOG.md): milestone release notes.
 - [AGENTS.md](AGENTS.md): guidance for coding agents working in this repository.
 
 ## License

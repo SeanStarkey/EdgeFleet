@@ -41,11 +41,12 @@ The project is complete when a reviewer can:
 Goal: create the repository shape, development workflow, and architectural
 contracts that the rest of the project can build on.
 
-Current status: in progress. The Rust workspace now exists with crates for the
-edge agent, control plane, shared wire types, and fleet simulator tooling. The
-shared crate includes initial telemetry, registration, heartbeat, command, and
-OTA metadata contracts. The Phase 0 Docker Compose file now defines the local
+Current status: complete. The Rust workspace exists with crates for the edge
+agent, control plane, shared wire types, and fleet simulator tooling. The shared
+crate includes initial telemetry, registration, heartbeat, command, and OTA
+metadata contracts. The Phase 0 Docker Compose file defines the local
 PostgreSQL, NATS, Rust scaffold services, and dashboard profile service shape.
+The dashboard scaffold, repository documentation, and CI workflow are in place.
 
 Deliverables:
 
@@ -284,7 +285,7 @@ for the core demo:
 
 ## Current Next Step
 
-Start Phase 0 by creating the Rust workspace, dashboard scaffold, Docker Compose
-infrastructure, and shared telemetry contract. Keep the first implementation
-small: one simulated device should be able to register, send a heartbeat, and
-emit one telemetry event before any advanced architecture is added.
+Begin Phase 1 with the smallest working fleet telemetry slice: one simulated
+device should be able to register with the control plane, persist or reuse its
+device identity, send a heartbeat, and emit one telemetry event before any
+advanced architecture is added.
