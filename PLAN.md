@@ -80,11 +80,17 @@ Deliverables:
 
 - Edge agent can register with the control plane and persist its device
   identity.
+- Agent registration includes telemetry profile metadata for declared event
+  types and payload fields, while ingestion still accepts open-ended JSON
+  payloads.
 - Control plane stores device records, heartbeats, and recent telemetry in
   PostgreSQL.
 - Agent sends structured telemetry events over HTTP or WebSocket.
 - Dashboard shows device inventory, online/offline status, latest heartbeat,
   and recent telemetry.
+- Dashboard renders telemetry payload fields from the shared event contract
+  without hard-coded sensor columns, so configurable agent and simulator
+  payloads stay visible in the operator UI.
 - Basic authentication mechanism for agents.
 - Simulator can run a configurable number of agents locally.
 - Seed data or demo script for a small fleet.
@@ -93,6 +99,11 @@ Validation:
 
 - Run at least 10 simulated agents locally.
 - Dashboard updates device status and telemetry without page reloads.
+- A configurable telemetry payload sent by an agent or simulator appears in the
+  dashboard with its custom fields and values without frontend code changes.
+- Registration stores telemetry profile metadata that the dashboard can use for
+  labels, units, field ordering, or other display hints without rejecting
+  undeclared telemetry fields.
 - Integration tests cover registration, heartbeat, and telemetry ingestion.
 - README contains an MVP demo walkthrough.
 

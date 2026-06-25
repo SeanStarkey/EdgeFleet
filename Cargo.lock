@@ -76,6 +76,7 @@ dependencies = [
  "chrono",
  "edgefleet-types",
  "serde_json",
+ "thiserror",
  "tracing",
 ]
 

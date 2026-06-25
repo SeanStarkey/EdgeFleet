@@ -84,6 +84,28 @@ The next active work is the first Phase 1 vertical slice:
 
 - One simulated device registering, sending a heartbeat, and emitting one
   telemetry event against the control plane.
+- Telemetry profile metadata flowing from registration to the dashboard so
+  configurable payload fields can be displayed without hard-coded sensor
+  columns.
+
+### Configurable Telemetry Fields
+
+Telemetry events use a stable envelope with typed operational fields and an
+open-ended JSON payload. Device-specific readings belong in that payload, so an
+agent can emit fields such as `temperature_c`, `voltage_v`, `door_open`, or
+`sample_count` without changing the shared event envelope.
+
+The Phase 1 design is to keep ingestion flexible while giving the dashboard
+enough metadata to render payloads well:
+
+- Agents and simulators send telemetry payloads as JSON objects.
+- Agent registration should include telemetry profile metadata for declared
+  event types and payload fields.
+- The control plane should store both recent telemetry payloads and profile
+  metadata without rejecting undeclared JSON fields.
+- The dashboard should use profile metadata for labels, units, field ordering,
+  and display hints, then fall back to generic key/value rendering for unknown
+  payload fields.
 
 ## Roadmap
 
@@ -160,8 +182,9 @@ Expected output:
 
 - `control-plane` prints the planned health, registration, telemetry,
   heartbeat, command, and OTA metadata routes plus example registration JSON.
-- `edge-agent` prints a sample heartbeat and telemetry event for a local
-  development device.
+- `edge-agent` reads local agent configuration, then prints the registration,
+  heartbeat, and telemetry payloads it will use for the first Phase 1 transport
+  slice.
 - `fleet-simulator` generates sample telemetry events for three simulated
   devices.
 
@@ -209,9 +232,26 @@ Dashboard-specific checks live in `dashboard/package.json`.
 
 ### Configuration
 
-The current Rust scaffolds do not require environment variables, local
-credentials, databases, NATS, or signing keys when run directly with Cargo. The
-Compose stack provides local-only defaults for the future runtime:
+The current Rust scaffolds do not require local credentials, databases, NATS, or
+signing keys when run directly with Cargo. The `edge-agent` executable supports
+local-only defaults plus environment overrides for its initial device identity
+and sample telemetry payload:
+
+- `EDGEFLEET_CONTROL_PLANE_URL=http://localhost:8080`
+- `EDGEFLEET_DEVICE_ID=edge-local-001`
+- `EDGEFLEET_DEVICE_DISPLAY_NAME=Local development agent`
+- `EDGEFLEET_AGENT_CAPABILITIES=telemetry,heartbeat`
+- `EDGEFLEET_SAMPLE_PAYLOAD_JSON={"temperature_c":41.2,"humidity":0.61,"fan_rpm":2380}`
+
+Use `EDGEFLEET_SAMPLE_PAYLOAD_JSON` to change the sample telemetry fields as
+well as their values:
+
+```bash
+EDGEFLEET_SAMPLE_PAYLOAD_JSON='{"voltage_v":12.4,"door_open":false,"sample_count":7}' \
+  cargo run -p edge-agent
+```
+
+The Compose stack also provides local-only defaults for the future runtime:
 
 - `EDGEFLEET_DATABASE_URL=postgres://edgefleet:edgefleet-dev@postgres:5432/edgefleet`
 - `EDGEFLEET_NATS_URL=nats://nats:4222`
