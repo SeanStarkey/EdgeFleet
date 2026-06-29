@@ -18,6 +18,9 @@ build/
 *.sqlite3
 *.db
 
+# Edge agent persisted device identity
+edge-agent-state.json
+
 # Editor and OS metadata
 .DS_Store
 .vscode/

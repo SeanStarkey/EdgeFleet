@@ -80,11 +80,17 @@ The Rust workspace has been scaffolded with:
 - `dashboard`: React, TypeScript, Tailwind, and Vite dashboard scaffold for the
   operator surface.
 
-The next active work is the first Phase 1 vertical slice:
+Phase 1 is underway. The first vertical slice — device registration — has
+landed: the control plane serves health probes and an idempotent
+`POST /api/v1/devices/register`, and the edge agent registers over HTTP and
+persists/reuses its device identity across restarts.
 
-- One simulated device registering, sending a heartbeat, and emitting one
-  telemetry event against the control plane.
-- Telemetry profile metadata flowing from registration to the dashboard so
+The next active work continues the Phase 1 loop:
+
+- The agent sends a heartbeat and emits one telemetry event over HTTP (the
+  payloads are already built locally today).
+- The control-plane device store moves from in-memory to PostgreSQL.
+- Telemetry profile metadata flows from registration to the dashboard so
   configurable payload fields can be displayed without hard-coded sensor
   columns.
 
@@ -164,43 +170,61 @@ npm run test
 npm run build
 ```
 
-### Running The Current Scaffold
+### Running The Registration Slice
 
-The repository currently contains Rust scaffolds for the control plane, edge
-agent, shared wire types, and fleet simulator. The binaries do not start network
-listeners yet; they print representative route, registration, heartbeat, and
-telemetry payloads so the shared contracts can be exercised while the API and
-runtime pieces are being built.
+The control plane now starts a real HTTP server and the edge agent registers
+with it over HTTP. Start the control plane first, then run the agent against it.
 
 ```bash
+# Terminal 1: start the control plane (listens on 0.0.0.0:8080 by default)
 cargo run -p control-plane
+
+# Terminal 2: register an agent with the running control plane
 cargo run -p edge-agent
+```
+
+The control plane exposes:
+
+- `GET /healthz` — liveness probe, returns `ok`.
+- `GET /readyz` — readiness probe, returns `ready`.
+- `POST /api/v1/devices/register` — idempotent device registration. Re-registering
+  the same `device_id` returns the original auth token and acceptance time.
+
+You can exercise registration directly with `curl`:
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/devices/register \
+  -H 'content-type: application/json' \
+  -d '{"device_id":"edge-001","display_name":"Demo","agent_version":"0.1.0","capabilities":["telemetry"]}'
+```
+
+On a successful registration the agent persists its device identity (device id,
+auth token, acceptance time) to a local state file and reuses it on the next
+run, so restarts keep a stable identity. The control plane currently keeps
+device records in memory; a PostgreSQL-backed store is the next slice.
+
+The `fleet-simulator` remains a scaffold and prints sample telemetry events for
+three simulated devices:
+
+```bash
 cargo run -p fleet-simulator
 ```
 
-Expected output:
-
-- `control-plane` prints the planned health, registration, telemetry,
-  heartbeat, command, and OTA metadata routes plus example registration JSON.
-- `edge-agent` reads local agent configuration, then prints the registration,
-  heartbeat, and telemetry payloads it will use for the first Phase 1 transport
-  slice.
-- `fleet-simulator` generates sample telemetry events for three simulated
-  devices.
-
 ### Local Stack
 
-The Phase 0 Docker Compose stack lives in [compose.yaml](compose.yaml). It
-starts local PostgreSQL and NATS infrastructure, then runs the current Rust
-control-plane, edge-agent, and fleet-simulator scaffold binaries in containers:
+The Docker Compose stack lives in [compose.yaml](compose.yaml). It starts local
+PostgreSQL and NATS infrastructure, then runs the Rust control-plane,
+edge-agent, and fleet-simulator binaries in containers:
 
 ```bash
 docker compose up --build
 ```
 
-The Rust binaries are still scaffold programs, not long-running network
-services. They print representative payloads and exit successfully while the
-real API runtime is being built.
+The control plane now runs as a long-running HTTP service and the edge agent
+registers against it on startup. The fleet-simulator remains a scaffold that
+prints representative payloads and exits. Offline buffering, reconnect, and
+backoff are Phase 2 work, so the agent currently expects the control plane to be
+reachable when it starts.
 
 Run the dashboard scaffold locally with:
 
@@ -219,7 +243,7 @@ Default local ports:
 - PostgreSQL: `localhost:5432`
 - NATS client port: `localhost:4222`
 - NATS monitoring: `localhost:8222`
-- Control plane API placeholder: `localhost:8080`
+- Control plane API: `localhost:8080`
 - Dashboard dev server: `localhost:5173`
 
 The compose file includes a dashboard service behind the `dashboard` profile:
@@ -232,16 +256,27 @@ Dashboard-specific checks live in `dashboard/package.json`.
 
 ### Configuration
 
-The current Rust scaffolds do not require local credentials, databases, NATS, or
-signing keys when run directly with Cargo. The `edge-agent` executable supports
-local-only defaults plus environment overrides for its initial device identity
-and sample telemetry payload:
+The control plane and edge agent do not require local credentials, databases,
+NATS, or signing keys when run directly with Cargo; the control plane keeps
+device records in memory for now. The `control-plane` binary reads:
+
+- `EDGEFLEET_BIND_ADDR=0.0.0.0:8080`
+- `RUST_LOG=info`
+
+The `edge-agent` executable supports local-only defaults plus environment
+overrides for its control-plane target, device identity, persisted state
+location, and sample telemetry payload:
 
 - `EDGEFLEET_CONTROL_PLANE_URL=http://localhost:8080`
 - `EDGEFLEET_DEVICE_ID=edge-local-001`
 - `EDGEFLEET_DEVICE_DISPLAY_NAME=Local development agent`
 - `EDGEFLEET_AGENT_CAPABILITIES=telemetry,heartbeat`
+- `EDGEFLEET_STATE_PATH=edge-agent-state.json`
 - `EDGEFLEET_SAMPLE_PAYLOAD_JSON={"temperature_c":41.2,"humidity":0.61,"fan_rpm":2380}`
+
+`EDGEFLEET_STATE_PATH` is where the agent stores its persisted device identity.
+It is git-ignored by default so registration tokens never land in source
+control.
 
 Use `EDGEFLEET_SAMPLE_PAYLOAD_JSON` to change the sample telemetry fields as
 well as their values:

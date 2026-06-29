@@ -1,37 +1,26 @@
-use chrono::Utc;
-use edgefleet_types::{DeviceRegistrationRequest, DeviceRegistrationResponse};
+use std::error::Error;
 
-const ROUTES: &[&str] = &[
-    "GET /healthz",
-    "GET /readyz",
-    "POST /api/v1/devices/register",
-    "POST /api/v1/telemetry",
-    "POST /api/v1/heartbeats",
-    "GET /api/v1/commands",
-    "POST /api/v1/commands/{command_id}/ack",
-    "GET /api/v1/ota/metadata",
-];
+use tracing_subscriber::EnvFilter;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let registration = DeviceRegistrationRequest {
-        device_id: "edge-local-001".to_owned(),
-        display_name: Some("Local development agent".to_owned()),
-        agent_version: env!("CARGO_PKG_VERSION").to_owned(),
-        capabilities: vec!["telemetry".to_owned(), "heartbeat".to_owned()],
-    };
+const BIND_ADDR_ENV: &str = "EDGEFLEET_BIND_ADDR";
+const DEFAULT_BIND_ADDR: &str = "0.0.0.0:8080";
 
-    let response = DeviceRegistrationResponse {
-        device_id: registration.device_id.clone(),
-        auth_token: "development-token-placeholder".to_owned(),
-        accepted_at: Utc::now(),
-    };
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    init_tracing();
 
-    println!("control-plane scaffold routes:");
-    for route in ROUTES {
-        println!("- {route}");
-    }
-    println!("{}", serde_json::to_string_pretty(&registration)?);
-    println!("{}", serde_json::to_string_pretty(&response)?);
+    let bind_addr = std::env::var(BIND_ADDR_ENV).unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_owned());
+    let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
+    tracing::info!(bind_addr = %listener.local_addr()?, "control-plane listening");
 
+    control_plane::serve(listener).await?;
     Ok(())
+}
+
+fn init_tracing() {
+    let filter = EnvFilter::try_from_env("RUST_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_target(false)
+        .init();
 }

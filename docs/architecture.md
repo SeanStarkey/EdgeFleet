@@ -17,16 +17,16 @@ The repository currently contains a Rust workspace with these crates:
 | Crate | Current role |
 | --- | --- |
 | `edgefleet-types` | Shared telemetry, registration, heartbeat, command, and OTA wire models. |
-| `edge-agent` | Edge agent scaffold that emits sample heartbeat and telemetry payloads. |
-| `control-plane` | Control plane scaffold that documents planned routes and sample registration payloads. |
+| `edge-agent` | Edge agent that registers with the control plane over HTTP and persists its device identity; builds heartbeat and telemetry payloads ahead of the transport slice. |
+| `control-plane` | Axum HTTP service with health probes and an idempotent device registration endpoint backed by an in-memory device registry. |
 | `fleet-simulator` | Simulator scaffold that generates sample telemetry for local devices. |
 
-The repository now includes a Phase 0 dashboard scaffold alongside PostgreSQL,
-NATS, Rust scaffold services, and the Compose dashboard profile. PostgreSQL
-persistence, NATS integration, real HTTP listeners, and live dashboard data are
-planned work. Until those pieces exist, architecture changes should keep the
-contracts and crate boundaries ready for them without pretending the runtime
-stack is already complete.
+The control plane now serves a real HTTP listener with health probes and device
+registration; the edge agent registers against it and persists/reuses its
+identity. PostgreSQL persistence, NATS integration, telemetry and heartbeat
+transport, and live dashboard data remain planned work. Architecture changes
+should keep the contracts and crate boundaries ready for them without pretending
+the runtime stack is already complete.
 
 ## System Overview
 

@@ -2,6 +2,21 @@
 
 All notable milestone changes for EdgeFleet are recorded here.
 
+## Unreleased
+
+Work toward `v0.2.0-mvp`.
+
+### Added
+
+- Control-plane HTTP service (Axum) with `/healthz`, `/readyz`, and an
+  idempotent `POST /api/v1/devices/register` endpoint backed by an in-memory
+  device registry.
+- Edge agent registers with the control plane over HTTP (reqwest) and persists
+  its device identity (device id, auth token, acceptance time) to a local state
+  file, reusing it across restarts. Configurable via `EDGEFLEET_STATE_PATH`.
+- End-to-end registration integration test that boots the control plane and
+  drives the agent registration flow, including idempotent re-registration.
+
 ## `v0.1.0-foundation` - 2026-06-23
 
 Phase 0 foundation is complete and ready to tag.

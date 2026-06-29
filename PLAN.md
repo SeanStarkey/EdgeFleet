@@ -78,8 +78,8 @@ visibility.
 
 Deliverables:
 
-- Edge agent can register with the control plane and persist its device
-  identity.
+- Completed: Edge agent can register with the control plane and persist its
+  device identity.
 - Agent registration includes telemetry profile metadata for declared event
   types and payload fields, while ingestion still accepts open-ended JSON
   payloads.
@@ -296,7 +296,13 @@ for the core demo:
 
 ## Current Next Step
 
-Begin Phase 1 with the smallest working fleet telemetry slice: one simulated
-device should be able to register with the control plane, persist or reuse its
-device identity, send a heartbeat, and emit one telemetry event before any
-advanced architecture is added.
+Registration is the first landed Phase 1 slice: the edge agent registers with
+the control plane over HTTP, receives an auth token, and persists/reuses its
+device identity across restarts. The control plane serves `/healthz`, `/readyz`,
+and an idempotent `POST /api/v1/devices/register` backed by an in-memory device
+registry.
+
+The next slice extends this loop: have the agent send a heartbeat and emit one
+telemetry event over HTTP (the payloads are already built locally), then move
+the control-plane device store from in-memory to PostgreSQL so device records,
+heartbeats, and recent telemetry survive restarts.
