@@ -83,17 +83,32 @@ Deliverables:
 - Agent registration includes telemetry profile metadata for declared event
   types and payload fields, while ingestion still accepts open-ended JSON
   payloads.
+- Shared newtype identifiers (`DeviceId`, `EventId`, `AuthToken`) in
+  `edgefleet-types` so invalid identifiers are unrepresentable, with `EventId`
+  backed by a ULID or UUIDv7 so event ids are sortable and dedup-friendly for
+  Phase 2 replay.
 - Control plane stores device records, heartbeats, and recent telemetry in
-  PostgreSQL.
+  PostgreSQL behind a `DeviceStore` trait (async fn in trait), keeping the
+  in-memory registry as the test implementation and using `sqlx`
+  compile-time-checked queries for the PostgreSQL implementation.
 - Agent sends structured telemetry events over HTTP or WebSocket.
+- Agent runtime structured as concurrent Tokio tasks (heartbeat, telemetry
+  sending) wired with channels, supervised with `JoinSet`, and stopped via
+  cancellation on SIGTERM; control plane serves with graceful shutdown.
 - Dashboard shows device inventory, online/offline status, latest heartbeat,
   and recent telemetry.
 - Dashboard renders telemetry payload fields from the shared event contract
   without hard-coded sensor columns, so configurable agent and simulator
   payloads stay visible in the operator UI.
-- Basic authentication mechanism for agents.
-- Simulator can run a configurable number of agents locally.
+- Basic authentication mechanism for agents, implemented as a typed Axum
+  extractor (`FromRequestParts`) with a single control-plane `ApiError` type
+  that implements `IntoResponse`.
+- Simulator can run a configurable number of agents locally by driving the
+  `edge-agent` library crate as concurrent Tokio tasks.
 - Seed data or demo script for a small fleet.
+- Workspace lint policy via `[workspace.lints]` (deny `unwrap`/`expect` in
+  non-test code plus a curated clippy subset) and a dependency audit step
+  (`cargo audit` or `cargo deny`) in CI.
 
 Validation:
 
@@ -117,7 +132,9 @@ connectivity patterns.
 Deliverables:
 
 - Agent-side SQLite queue for telemetry buffering.
-- Automatic reconnect with exponential backoff and jitter.
+- Automatic reconnect with exponential backoff and jitter, implemented as a
+  pure retry-policy type with injected clock and RNG so schedules are
+  deterministic under test.
 - Replay after reconnect with idempotent event handling.
 - Delivery status tracking for queued events.
 - Backpressure limits and queue retention policy.
@@ -132,6 +149,9 @@ Validation:
 - Buffered telemetry replays correctly after reconnect.
 - Duplicate telemetry submissions are ignored or handled idempotently.
 - Tests cover queue persistence, replay ordering, and reconnect behavior.
+- Backoff schedules are verified deterministically with `tokio::time::pause`,
+  and queue replay ordering and dedup invariants are covered by
+  property-based tests (`proptest`).
 
 Target release: `v0.3.0-reliability`
 
@@ -145,7 +165,9 @@ Deliverables:
   dispatch.
 - Remote command API and dashboard controls.
 - Agent command receiver with command acknowledgement.
-- Command history and status tracking in the control plane.
+- Command history and status tracking in the control plane, with the command
+  lifecycle modeled as typed state transitions (transition methods on the
+  status enum that reject invalid moves) rather than free-form status writes.
 - Structured logging with `tracing`.
 - Prometheus metrics for API, agent, queue, command, and telemetry paths.
 - OpenTelemetry tracing for key request and event flows.
@@ -173,7 +195,9 @@ Deliverables:
   rollback target.
 - Agent update checker and artifact downloader.
 - Canary rollout support.
-- Rollout pause, resume, cancel, and rollback operations.
+- Rollout pause, resume, cancel, and rollback operations, modeled as a typed
+  rollout state machine whose transition methods return errors for invalid
+  moves and are exhaustively unit tested.
 - Dashboard view for rollout progress and device update status.
 - Demo artifact that updates simulated agent version metadata.
 - Documentation for signing keys, artifact publishing, and rollback behavior.
@@ -193,7 +217,9 @@ Goal: make the project impressive, understandable, and reliable for reviewers.
 
 Deliverables:
 
-- Fleet simulation for 50 to 100 agents with configurable scenarios.
+- Fleet simulation for 50 to 100 agents with configurable scenarios, reusing
+  the `edge-agent` library for each simulated agent and throttling
+  registration storms with a semaphore.
 - End-to-end demo script covering registration, telemetry, disconnect, replay,
   command delivery, OTA canary, failure, and rollback.
 - Load test or benchmark report for telemetry ingestion and agent concurrency.
@@ -305,4 +331,6 @@ registry.
 The next slice extends this loop: have the agent send a heartbeat and emit one
 telemetry event over HTTP (the payloads are already built locally), then move
 the control-plane device store from in-memory to PostgreSQL so device records,
-heartbeats, and recent telemetry survive restarts.
+heartbeats, and recent telemetry survive restarts. The PostgreSQL move should
+introduce the `DeviceStore` trait seam, keeping the current in-memory registry
+as the test implementation.
