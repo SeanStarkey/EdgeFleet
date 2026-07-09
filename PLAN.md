@@ -80,7 +80,7 @@ Deliverables:
 
 - Completed: Edge agent can register with the control plane and persist its
   device identity.
-- Agent registration includes telemetry profile metadata for declared event
+- Completed: Agent registration includes telemetry profile metadata for declared event
   types and payload fields, while ingestion still accepts open-ended JSON
   payloads.
 - Shared newtype identifiers (`DeviceId`, `EventId`, `AuthToken`) in

@@ -189,6 +189,14 @@ offline replay, and reconnect storms. Device-specific values belong in
 `payload`; routing, validation, deduplication, and dashboard display should rely
 on the typed envelope fields.
 
+Registration also carries telemetry profile metadata for the event types and
+payload fields an agent expects to emit. The current agent derives that profile
+from `EDGEFLEET_SAMPLE_PAYLOAD_JSON`, including each field's JSON value type,
+label, display order, and any inferred unit or display hint. The control plane
+stores the profile with device metadata, but telemetry ingestion should remain
+open-ended: undeclared payload fields are accepted and rendered with dashboard
+fallbacks until richer metadata is registered.
+
 ### Offline Buffering And Replay
 
 1. Agent persists telemetry locally before delivery.

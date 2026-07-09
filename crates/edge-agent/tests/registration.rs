@@ -5,7 +5,10 @@ use std::path::PathBuf;
 
 use chrono::Utc;
 use edge_agent::{DeviceIdentity, load_identity, register, save_identity};
-use edgefleet_types::DeviceRegistrationRequest;
+use edgefleet_types::{
+    CURRENT_SCHEMA_VERSION, DeviceRegistrationRequest, TelemetryEventProfile,
+    TelemetryFieldProfile, TelemetryProfile, TelemetryValueType,
+};
 
 async fn start_control_plane() -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -24,6 +27,20 @@ fn registration(device_id: &str) -> DeviceRegistrationRequest {
         display_name: Some("Integration test device".to_owned()),
         agent_version: "0.1.0".to_owned(),
         capabilities: vec!["telemetry".to_owned(), "heartbeat".to_owned()],
+        telemetry_profile: TelemetryProfile {
+            event_types: vec![TelemetryEventProfile {
+                event_type: "sensor.reading".to_owned(),
+                schema_version: CURRENT_SCHEMA_VERSION,
+                payload_fields: vec![TelemetryFieldProfile {
+                    name: "temperature_c".to_owned(),
+                    value_type: TelemetryValueType::Number,
+                    label: Some("Temperature".to_owned()),
+                    unit: Some("C".to_owned()),
+                    display_order: 0,
+                    display_hint: Some("gauge".to_owned()),
+                }],
+            }],
+        },
     }
 }
 

@@ -12,8 +12,9 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use edgefleet_types::{
-    DeviceRegistrationRequest, DeviceRegistrationResponse, DeviceStatus, HeartbeatRequest,
-    TelemetryEvent,
+    CURRENT_SCHEMA_VERSION, DeviceRegistrationRequest, DeviceRegistrationResponse, DeviceStatus,
+    HeartbeatRequest, TelemetryEvent, TelemetryEventProfile, TelemetryFieldProfile,
+    TelemetryProfile, TelemetryValueType,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -26,6 +27,7 @@ const DEFAULT_CAPABILITIES: &[&str] = &["telemetry", "heartbeat"];
 const DEFAULT_SAMPLE_PAYLOAD_JSON: &str =
     r#"{"temperature_c":41.2,"humidity":0.61,"fan_rpm":2380}"#;
 const DEFAULT_STATE_PATH: &str = "edge-agent-state.json";
+const DEFAULT_TELEMETRY_EVENT_TYPE: &str = "sensor.reading";
 
 const CONTROL_PLANE_URL_ENV: &str = "EDGEFLEET_CONTROL_PLANE_URL";
 const DEVICE_ID_ENV: &str = "EDGEFLEET_DEVICE_ID";
@@ -116,6 +118,10 @@ impl EdgeAgent {
             display_name: self.config.display_name.clone(),
             agent_version: env!("CARGO_PKG_VERSION").to_owned(),
             capabilities: self.config.capabilities.clone(),
+            telemetry_profile: telemetry_profile_for_payload(
+                DEFAULT_TELEMETRY_EVENT_TYPE,
+                &self.config.sample_payload,
+            ),
         };
 
         let heartbeat = HeartbeatRequest {
@@ -134,7 +140,7 @@ impl EdgeAgent {
                 now.timestamp_micros()
             ),
             now,
-            "sensor.reading",
+            DEFAULT_TELEMETRY_EVENT_TYPE,
             self.config.sample_payload.clone(),
         );
         telemetry.validate()?;
@@ -366,6 +372,86 @@ fn parse_sample_payload(value: Option<&String>) -> Result<Value, AgentError> {
     Ok(payload)
 }
 
+fn telemetry_profile_for_payload(event_type: &str, payload: &Value) -> TelemetryProfile {
+    let payload_fields = payload
+        .as_object()
+        .map(|object| {
+            let mut fields = object.iter().collect::<Vec<_>>();
+            fields.sort_by_key(|(name, _)| *name);
+
+            fields
+                .into_iter()
+                .enumerate()
+                .map(|(index, (name, value))| TelemetryFieldProfile {
+                    name: name.clone(),
+                    value_type: telemetry_value_type(value),
+                    label: Some(label_for_field(name)),
+                    unit: unit_for_field(name),
+                    display_order: index as u32,
+                    display_hint: display_hint_for_field(name, value),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    TelemetryProfile {
+        event_types: vec![TelemetryEventProfile {
+            event_type: event_type.to_owned(),
+            schema_version: CURRENT_SCHEMA_VERSION,
+            payload_fields,
+        }],
+    }
+}
+
+fn telemetry_value_type(value: &Value) -> TelemetryValueType {
+    match value {
+        Value::Null => TelemetryValueType::Null,
+        Value::Bool(_) => TelemetryValueType::Boolean,
+        Value::Number(_) => TelemetryValueType::Number,
+        Value::String(_) => TelemetryValueType::String,
+        Value::Array(_) => TelemetryValueType::Array,
+        Value::Object(_) => TelemetryValueType::Object,
+    }
+}
+
+fn label_for_field(name: &str) -> String {
+    name.split('_')
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => format!("{}{}", first.to_ascii_uppercase(), chars.as_str()),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn unit_for_field(name: &str) -> Option<String> {
+    if name.ends_with("_c") {
+        Some("C".to_owned())
+    } else if name.ends_with("_v") {
+        Some("V".to_owned())
+    } else if name.ends_with("_rpm") {
+        Some("rpm".to_owned())
+    } else {
+        None
+    }
+}
+
+fn display_hint_for_field(name: &str, value: &Value) -> Option<String> {
+    if name == "humidity" {
+        Some("ratio".to_owned())
+    } else if value.is_boolean() {
+        Some("status".to_owned())
+    } else if value.is_number() {
+        Some("gauge".to_owned())
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -455,6 +541,29 @@ mod tests {
             snapshot.registration.capabilities,
             ["telemetry", "heartbeat"]
         );
+        let profile = &snapshot.registration.telemetry_profile.event_types[0];
+        assert_eq!(profile.event_type, DEFAULT_TELEMETRY_EVENT_TYPE);
+        assert_eq!(profile.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(profile.payload_fields.len(), 3);
+        assert_eq!(profile.payload_fields[0].name, "fan_rpm");
+        assert_eq!(
+            profile.payload_fields[0].value_type,
+            TelemetryValueType::Number
+        );
+        assert_eq!(profile.payload_fields[0].label.as_deref(), Some("Fan Rpm"));
+        assert_eq!(profile.payload_fields[0].unit.as_deref(), Some("rpm"));
+        assert_eq!(profile.payload_fields[0].display_order, 0);
+        assert_eq!(
+            profile.payload_fields[0].display_hint.as_deref(),
+            Some("gauge")
+        );
+        assert_eq!(profile.payload_fields[1].name, "humidity");
+        assert_eq!(
+            profile.payload_fields[1].display_hint.as_deref(),
+            Some("ratio")
+        );
+        assert_eq!(profile.payload_fields[2].name, "temperature_c");
+        assert_eq!(profile.payload_fields[2].unit.as_deref(), Some("C"));
         assert_eq!(snapshot.heartbeat.device_id, DEFAULT_DEVICE_ID);
         assert_eq!(snapshot.heartbeat.queue_depth, 0);
         assert_eq!(snapshot.heartbeat.status, DeviceStatus::Online);

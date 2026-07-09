@@ -3,13 +3,13 @@
 //! Registration is idempotent: re-registering a known `device_id` returns the
 //! original auth token and acceptance time so an agent that restarts keeps a
 //! stable identity. Mutable metadata (display name, agent version, declared
-//! capabilities) is refreshed on every registration.
+//! capabilities, and telemetry profile) is refreshed on every registration.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
-use edgefleet_types::{DeviceRegistrationRequest, DeviceRegistrationResponse};
+use edgefleet_types::{DeviceRegistrationRequest, DeviceRegistrationResponse, TelemetryProfile};
 use uuid::Uuid;
 
 /// A persisted device record held by the control plane.
@@ -19,6 +19,7 @@ pub struct DeviceRecord {
     pub display_name: Option<String>,
     pub agent_version: String,
     pub capabilities: Vec<String>,
+    pub telemetry_profile: TelemetryProfile,
     pub auth_token: String,
     pub registered_at: DateTime<Utc>,
 }
@@ -67,6 +68,7 @@ impl DeviceRegistry {
                 display_name: request.display_name.clone(),
                 agent_version: request.agent_version.clone(),
                 capabilities: request.capabilities.clone(),
+                telemetry_profile: request.telemetry_profile.clone(),
                 auth_token: mint_token(),
                 registered_at: now,
             });
@@ -76,6 +78,7 @@ impl DeviceRegistry {
         record.display_name = request.display_name.clone();
         record.agent_version = request.agent_version.clone();
         record.capabilities = request.capabilities.clone();
+        record.telemetry_profile = request.telemetry_profile.clone();
 
         Ok(DeviceRegistrationResponse {
             device_id: record.device_id.clone(),
@@ -106,6 +109,9 @@ fn mint_token() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use edgefleet_types::{
+        CURRENT_SCHEMA_VERSION, TelemetryEventProfile, TelemetryFieldProfile, TelemetryValueType,
+    };
 
     fn request(device_id: &str) -> DeviceRegistrationRequest {
         DeviceRegistrationRequest {
@@ -113,6 +119,24 @@ mod tests {
             display_name: Some("Test device".to_owned()),
             agent_version: "0.1.0".to_owned(),
             capabilities: vec!["telemetry".to_owned()],
+            telemetry_profile: telemetry_profile("temperature_c", "Temperature", Some("C")),
+        }
+    }
+
+    fn telemetry_profile(field_name: &str, label: &str, unit: Option<&str>) -> TelemetryProfile {
+        TelemetryProfile {
+            event_types: vec![TelemetryEventProfile {
+                event_type: "sensor.reading".to_owned(),
+                schema_version: CURRENT_SCHEMA_VERSION,
+                payload_fields: vec![TelemetryFieldProfile {
+                    name: field_name.to_owned(),
+                    value_type: TelemetryValueType::Number,
+                    label: Some(label.to_owned()),
+                    unit: unit.map(str::to_owned),
+                    display_order: 0,
+                    display_hint: Some("gauge".to_owned()),
+                }],
+            }],
         }
     }
 
@@ -138,6 +162,7 @@ mod tests {
         let mut second_request = request("edge-1");
         second_request.agent_version = "0.2.0".to_owned();
         second_request.capabilities = vec!["telemetry".to_owned(), "ota".to_owned()];
+        second_request.telemetry_profile = telemetry_profile("voltage_v", "Voltage", Some("V"));
         let second = registry.register(&second_request, Utc::now()).unwrap();
 
         assert_eq!(first.auth_token, second.auth_token);
@@ -148,6 +173,16 @@ mod tests {
         let record = registry.get("edge-1").unwrap();
         assert_eq!(record.agent_version, "0.2.0");
         assert_eq!(record.capabilities, ["telemetry", "ota"]);
+        assert_eq!(
+            record.telemetry_profile.event_types[0].payload_fields[0].name,
+            "voltage_v"
+        );
+        assert_eq!(
+            record.telemetry_profile.event_types[0].payload_fields[0]
+                .unit
+                .as_deref(),
+            Some("V")
+        );
     }
 
     #[test]

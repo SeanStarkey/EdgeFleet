@@ -82,7 +82,8 @@ The Rust workspace has been scaffolded with:
 
 Phase 1 is underway. The first vertical slice — device registration — has
 landed: the control plane serves health probes and an idempotent
-`POST /api/v1/devices/register`, and the edge agent registers over HTTP and
+`POST /api/v1/devices/register`, and the edge agent registers over HTTP,
+declares telemetry profile metadata for its sample payload fields, and
 persists/reuses its device identity across restarts.
 
 The next active work continues the Phase 1 loop:
@@ -90,8 +91,8 @@ The next active work continues the Phase 1 loop:
 - The agent sends a heartbeat and emits one telemetry event over HTTP (the
   payloads are already built locally today).
 - The control-plane device store moves from in-memory to PostgreSQL.
-- Telemetry profile metadata flows from registration to the dashboard so
-  configurable payload fields can be displayed without hard-coded sensor
+- Dashboard inventory and telemetry views consume stored registration metadata
+  so configurable payload fields can be displayed without hard-coded sensor
   columns.
 
 ### Configurable Telemetry Fields
@@ -105,7 +106,7 @@ The Phase 1 design is to keep ingestion flexible while giving the dashboard
 enough metadata to render payloads well:
 
 - Agents and simulators send telemetry payloads as JSON objects.
-- Agent registration should include telemetry profile metadata for declared
+- Agent registration includes telemetry profile metadata for declared
   event types and payload fields.
 - The control plane should store both recent telemetry payloads and profile
   metadata without rejecting undeclared JSON fields.
@@ -285,6 +286,12 @@ well as their values:
 EDGEFLEET_SAMPLE_PAYLOAD_JSON='{"voltage_v":12.4,"door_open":false,"sample_count":7}' \
   cargo run -p edge-agent
 ```
+
+At startup, the agent derives registration profile metadata from the configured
+sample payload. Each declared field includes its JSON value type, label, stable
+display order, and any inferred unit or display hint. The profile helps future
+dashboard views render known fields well while telemetry ingestion remains open
+to undeclared JSON payload fields.
 
 The Compose stack also provides local-only defaults for the future runtime:
 

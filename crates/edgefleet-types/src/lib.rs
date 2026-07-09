@@ -24,6 +24,40 @@ pub struct TelemetryEvent {
     pub payload: Value,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct TelemetryProfile {
+    pub event_types: Vec<TelemetryEventProfile>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TelemetryEventProfile {
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub schema_version: u16,
+    pub payload_fields: Vec<TelemetryFieldProfile>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TelemetryFieldProfile {
+    pub name: String,
+    pub value_type: TelemetryValueType,
+    pub label: Option<String>,
+    pub unit: Option<String>,
+    pub display_order: u32,
+    pub display_hint: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TelemetryValueType {
+    Null,
+    Boolean,
+    Number,
+    String,
+    Array,
+    Object,
+}
+
 impl TelemetryEvent {
     pub fn new(
         device_id: impl Into<String>,
@@ -61,6 +95,8 @@ pub struct DeviceRegistrationRequest {
     pub display_name: Option<String>,
     pub agent_version: String,
     pub capabilities: Vec<String>,
+    #[serde(default)]
+    pub telemetry_profile: TelemetryProfile,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -160,6 +196,45 @@ mod tests {
         assert_eq!(serialized["type"], "sensor.reading");
         assert_eq!(serialized["schema_version"], CURRENT_SCHEMA_VERSION);
         assert_eq!(serialized["payload"]["temperature_c"], 41.2);
+    }
+
+    #[test]
+    fn registration_request_serializes_telemetry_profile_metadata() {
+        let request = DeviceRegistrationRequest {
+            device_id: "edge-042".to_owned(),
+            display_name: Some("Lab freezer".to_owned()),
+            agent_version: "0.1.0".to_owned(),
+            capabilities: vec!["telemetry".to_owned()],
+            telemetry_profile: TelemetryProfile {
+                event_types: vec![TelemetryEventProfile {
+                    event_type: "sensor.reading".to_owned(),
+                    schema_version: CURRENT_SCHEMA_VERSION,
+                    payload_fields: vec![TelemetryFieldProfile {
+                        name: "temperature_c".to_owned(),
+                        value_type: TelemetryValueType::Number,
+                        label: Some("Temperature".to_owned()),
+                        unit: Some("C".to_owned()),
+                        display_order: 0,
+                        display_hint: Some("gauge".to_owned()),
+                    }],
+                }],
+            },
+        };
+
+        let serialized = serde_json::to_value(request).unwrap();
+
+        assert_eq!(
+            serialized["telemetry_profile"]["event_types"][0]["type"],
+            "sensor.reading"
+        );
+        assert_eq!(
+            serialized["telemetry_profile"]["event_types"][0]["payload_fields"][0]["name"],
+            "temperature_c"
+        );
+        assert_eq!(
+            serialized["telemetry_profile"]["event_types"][0]["payload_fields"][0]["unit"],
+            "C"
+        );
     }
 
     #[test]
