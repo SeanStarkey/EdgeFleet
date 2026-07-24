@@ -193,14 +193,15 @@ Telemetry events use a stable envelope with an open-ended JSON payload. The
 envelope gives the platform enough structure for routing, authentication,
 deduplication, replay, and dashboard display, while the payload allows each
 device type to report domain-specific readings without requiring platform
-schema changes for every new metric.
+schema changes for every new metric. Event identifiers are UUIDv7 values so
+newly generated events remain sortable while retaining unique idempotency keys.
 
 Example telemetry event:
 
 ```json
 {
   "device_id": "edge-042",
-  "event_id": "01JZ9X6N9VD4Y7Y3P2Z5F8K4QG",
+  "event_id": "019f9656-5e97-72b0-ba3f-9ccde815d18a",
   "timestamp": "2026-06-18T19:42:10Z",
   "type": "sensor.reading",
   "schema_version": 1,

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use chrono::Utc;
 use edge_agent::{DeviceIdentity, load_identity, register, save_identity};
 use edgefleet_types::{
-    CURRENT_SCHEMA_VERSION, DeviceRegistrationRequest, TelemetryEventProfile,
+    CURRENT_SCHEMA_VERSION, DeviceId, DeviceRegistrationRequest, TelemetryEventProfile,
     TelemetryFieldProfile, TelemetryProfile, TelemetryValueType,
 };
 
@@ -23,7 +23,7 @@ async fn start_control_plane() -> String {
 
 fn registration(device_id: &str) -> DeviceRegistrationRequest {
     DeviceRegistrationRequest {
-        device_id: device_id.to_owned(),
+        device_id: DeviceId::new(device_id).unwrap(),
         display_name: Some("Integration test device".to_owned()),
         agent_version: "0.1.0".to_owned(),
         capabilities: vec!["telemetry".to_owned(), "heartbeat".to_owned()],
@@ -57,8 +57,8 @@ async fn agent_registers_and_reregistration_is_idempotent() {
         .await
         .expect("second registration succeeds");
 
-    assert_eq!(first.device_id, "edge-int-001");
-    assert!(first.auth_token.starts_with("eftok_"));
+    assert_eq!(first.device_id.as_str(), "edge-int-001");
+    assert!(first.auth_token.to_string().starts_with("eftok_"));
     // A restart / retry keeps the same identity.
     assert_eq!(first.auth_token, second.auth_token);
     assert_eq!(first.accepted_at, second.accepted_at);
@@ -72,7 +72,8 @@ async fn agent_persists_and_reuses_identity_across_restarts() {
     let state_path = temp_state_path();
 
     // First "boot": no persisted identity, register and persist.
-    assert_eq!(load_identity(&state_path, "edge-int-002").unwrap(), None);
+    let device_id = DeviceId::new("edge-int-002").unwrap();
+    assert_eq!(load_identity(&state_path, &device_id).unwrap(), None);
     let response = register(&client, &base_url, &request)
         .await
         .expect("registration succeeds");
@@ -81,7 +82,7 @@ async fn agent_persists_and_reuses_identity_across_restarts() {
 
     // Second "boot": the persisted identity is loaded and matches what the
     // control plane returns again.
-    let reused = load_identity(&state_path, "edge-int-002")
+    let reused = load_identity(&state_path, &device_id)
         .unwrap()
         .expect("identity persisted");
     assert_eq!(reused, identity);

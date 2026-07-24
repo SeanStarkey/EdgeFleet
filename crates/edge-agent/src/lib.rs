@@ -12,9 +12,10 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use edgefleet_types::{
-    CURRENT_SCHEMA_VERSION, DeviceRegistrationRequest, DeviceRegistrationResponse, DeviceStatus,
-    HeartbeatRequest, TelemetryEvent, TelemetryEventProfile, TelemetryFieldProfile,
-    TelemetryProfile, TelemetryValueType,
+    AuthToken, CURRENT_SCHEMA_VERSION, DeviceId, DeviceRegistrationRequest,
+    DeviceRegistrationResponse, DeviceStatus, EventId, HeartbeatRequest, IdentifierError,
+    TelemetryEvent, TelemetryEventProfile, TelemetryFieldProfile, TelemetryProfile,
+    TelemetryValueType,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -39,8 +40,8 @@ const STATE_PATH_ENV: &str = "EDGEFLEET_STATE_PATH";
 /// Persisted device identity stored on the edge device between runs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceIdentity {
-    pub device_id: String,
-    pub auth_token: String,
+    pub device_id: DeviceId,
+    pub auth_token: AuthToken,
     pub accepted_at: DateTime<Utc>,
 }
 
@@ -59,7 +60,7 @@ impl From<DeviceRegistrationResponse> for DeviceIdentity {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AgentConfig {
     pub control_plane_url: String,
-    pub device_id: String,
+    pub device_id: DeviceId,
     pub display_name: Option<String>,
     pub capabilities: Vec<String>,
     pub sample_payload: Value,
@@ -75,7 +76,7 @@ impl AgentConfig {
         let vars = vars.into_iter().collect::<HashMap<_, _>>();
         let control_plane_url =
             env_or_default(&vars, CONTROL_PLANE_URL_ENV, DEFAULT_CONTROL_PLANE_URL)?;
-        let device_id = env_or_default(&vars, DEVICE_ID_ENV, DEFAULT_DEVICE_ID)?;
+        let device_id = DeviceId::new(env_or_default(&vars, DEVICE_ID_ENV, DEFAULT_DEVICE_ID)?)?;
         let display_name =
             optional_env(&vars, DISPLAY_NAME_ENV).or_else(|| Some(DEFAULT_DISPLAY_NAME.to_owned()));
         let capabilities = parse_capabilities(vars.get(CAPABILITIES_ENV))?;
@@ -134,11 +135,7 @@ impl EdgeAgent {
 
         let telemetry = TelemetryEvent::new(
             self.config.device_id.clone(),
-            format!(
-                "{}-startup-{}",
-                self.config.device_id,
-                now.timestamp_micros()
-            ),
+            EventId::new(),
             now,
             DEFAULT_TELEMETRY_EVENT_TYPE,
             self.config.sample_payload.clone(),
@@ -184,7 +181,10 @@ pub async fn register(
 /// A missing state file returns `Ok(None)`. A state file for a different
 /// `device_id` is ignored (also `Ok(None)`) so re-pointing the agent at a new
 /// device id does not reuse a stale token.
-pub fn load_identity(path: &Path, device_id: &str) -> Result<Option<DeviceIdentity>, AgentError> {
+pub fn load_identity(
+    path: &Path,
+    device_id: &DeviceId,
+) -> Result<Option<DeviceIdentity>, AgentError> {
     let contents = match std::fs::read_to_string(path) {
         Ok(contents) => contents,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -202,7 +202,7 @@ pub fn load_identity(path: &Path, device_id: &str) -> Result<Option<DeviceIdenti
             source,
         })?;
 
-    if identity.device_id == device_id {
+    if &identity.device_id == device_id {
         Ok(Some(identity))
     } else {
         Ok(None)
@@ -300,6 +300,8 @@ pub enum AgentError {
     },
     #[error("telemetry contract validation failed")]
     TelemetryContract(#[from] edgefleet_types::ContractError),
+    #[error("identifier validation failed")]
+    Identifier(#[from] IdentifierError),
     #[error("json serialization failed")]
     Json(#[from] serde_json::Error),
 }
@@ -460,7 +462,7 @@ mod tests {
         let config = AgentConfig::from_vars([]).unwrap();
 
         assert_eq!(config.control_plane_url, DEFAULT_CONTROL_PLANE_URL);
-        assert_eq!(config.device_id, DEFAULT_DEVICE_ID);
+        assert_eq!(config.device_id.as_str(), DEFAULT_DEVICE_ID);
         assert_eq!(config.display_name.as_deref(), Some(DEFAULT_DISPLAY_NAME));
         assert_eq!(config.capabilities, ["telemetry", "heartbeat"]);
         assert_eq!(config.sample_payload["temperature_c"], 41.2);
@@ -485,7 +487,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(config.control_plane_url, "http://control-plane:8080");
-        assert_eq!(config.device_id, "edge-lab-007");
+        assert_eq!(config.device_id.as_str(), "edge-lab-007");
         assert_eq!(
             config.display_name.as_deref(),
             Some("Lab freezer controller")
@@ -535,7 +537,7 @@ mod tests {
 
         let snapshot = agent.startup_snapshot(now).unwrap();
 
-        assert_eq!(snapshot.registration.device_id, DEFAULT_DEVICE_ID);
+        assert_eq!(snapshot.registration.device_id.as_str(), DEFAULT_DEVICE_ID);
         assert_eq!(
             snapshot.registration.capabilities,
             ["telemetry", "heartbeat"]
@@ -563,15 +565,12 @@ mod tests {
         );
         assert_eq!(profile.payload_fields[2].name, "temperature_c");
         assert_eq!(profile.payload_fields[2].unit.as_deref(), Some("C"));
-        assert_eq!(snapshot.heartbeat.device_id, DEFAULT_DEVICE_ID);
+        assert_eq!(snapshot.heartbeat.device_id.as_str(), DEFAULT_DEVICE_ID);
         assert_eq!(snapshot.heartbeat.queue_depth, 0);
         assert_eq!(snapshot.heartbeat.status, DeviceStatus::Online);
-        assert_eq!(snapshot.telemetry.device_id(), DEFAULT_DEVICE_ID);
+        assert_eq!(snapshot.telemetry.device_id().as_str(), DEFAULT_DEVICE_ID);
         assert_eq!(snapshot.telemetry.event_type(), "sensor.reading");
-        assert_eq!(
-            snapshot.telemetry.event_id(),
-            "edge-local-001-startup-1781811730000000"
-        );
+        assert_eq!(snapshot.telemetry.event_id().as_uuid().get_version_num(), 7);
         assert_eq!(snapshot.telemetry.payload(), &agent.config.sample_payload);
     }
 
@@ -579,13 +578,13 @@ mod tests {
     fn identity_round_trips_through_disk() {
         let path = temp_state_path("round-trip");
         let identity = DeviceIdentity {
-            device_id: "edge-state-1".to_owned(),
-            auth_token: "eftok_abc123".to_owned(),
+            device_id: DeviceId::new("edge-state-1").unwrap(),
+            auth_token: AuthToken::generate(),
             accepted_at: Utc::now(),
         };
 
         save_identity(&path, &identity).unwrap();
-        let loaded = load_identity(&path, "edge-state-1").unwrap();
+        let loaded = load_identity(&path, &DeviceId::new("edge-state-1").unwrap()).unwrap();
 
         assert_eq!(loaded.as_ref(), Some(&identity));
         let _ = std::fs::remove_file(&path);
@@ -596,7 +595,7 @@ mod tests {
         let path = temp_state_path("missing");
         let _ = std::fs::remove_file(&path);
 
-        let loaded = load_identity(&path, "edge-state-1").unwrap();
+        let loaded = load_identity(&path, &DeviceId::new("edge-state-1").unwrap()).unwrap();
 
         assert_eq!(loaded, None);
     }
@@ -605,13 +604,13 @@ mod tests {
     fn identity_for_other_device_is_ignored() {
         let path = temp_state_path("mismatch");
         let identity = DeviceIdentity {
-            device_id: "edge-old".to_owned(),
-            auth_token: "eftok_old".to_owned(),
+            device_id: DeviceId::new("edge-old").unwrap(),
+            auth_token: AuthToken::generate(),
             accepted_at: Utc::now(),
         };
         save_identity(&path, &identity).unwrap();
 
-        let loaded = load_identity(&path, "edge-new").unwrap();
+        let loaded = load_identity(&path, &DeviceId::new("edge-new").unwrap()).unwrap();
 
         assert_eq!(loaded, None);
         let _ = std::fs::remove_file(&path);

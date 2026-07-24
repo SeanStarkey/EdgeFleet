@@ -1,7 +1,11 @@
+mod identifiers;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
+
+pub use identifiers::{AuthToken, DeviceId, EventId, IdentifierError};
 
 pub const CURRENT_SCHEMA_VERSION: u16 = 1;
 
@@ -16,8 +20,8 @@ pub enum ContractError {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "UncheckedTelemetryEvent")]
 pub struct TelemetryEvent {
-    device_id: String,
-    event_id: String,
+    device_id: DeviceId,
+    event_id: EventId,
     timestamp: DateTime<Utc>,
     #[serde(rename = "type")]
     event_type: String,
@@ -27,8 +31,8 @@ pub struct TelemetryEvent {
 
 #[derive(Deserialize)]
 struct UncheckedTelemetryEvent {
-    device_id: String,
-    event_id: String,
+    device_id: DeviceId,
+    event_id: EventId,
     timestamp: DateTime<Utc>,
     #[serde(rename = "type")]
     event_type: String,
@@ -72,15 +76,15 @@ pub enum TelemetryValueType {
 
 impl TelemetryEvent {
     pub fn new(
-        device_id: impl Into<String>,
-        event_id: impl Into<String>,
+        device_id: DeviceId,
+        event_id: EventId,
         timestamp: DateTime<Utc>,
         event_type: impl Into<String>,
         payload: Value,
     ) -> Result<Self, ContractError> {
         Self::try_from(UncheckedTelemetryEvent {
-            device_id: device_id.into(),
-            event_id: event_id.into(),
+            device_id,
+            event_id,
             timestamp,
             event_type: event_type.into(),
             schema_version: CURRENT_SCHEMA_VERSION,
@@ -88,11 +92,11 @@ impl TelemetryEvent {
         })
     }
 
-    pub fn device_id(&self) -> &str {
+    pub fn device_id(&self) -> &DeviceId {
         &self.device_id
     }
 
-    pub fn event_id(&self) -> &str {
+    pub fn event_id(&self) -> &EventId {
         &self.event_id
     }
 
@@ -113,8 +117,6 @@ impl TelemetryEvent {
     }
 
     pub fn validate(&self) -> Result<(), ContractError> {
-        require_non_empty("device_id", &self.device_id)?;
-        require_non_empty("event_id", &self.event_id)?;
         require_non_empty("type", &self.event_type)?;
 
         if self.schema_version == 0 {
@@ -145,7 +147,7 @@ impl TryFrom<UncheckedTelemetryEvent> for TelemetryEvent {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceRegistrationRequest {
-    pub device_id: String,
+    pub device_id: DeviceId,
     pub display_name: Option<String>,
     pub agent_version: String,
     pub capabilities: Vec<String>,
@@ -155,14 +157,14 @@ pub struct DeviceRegistrationRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceRegistrationResponse {
-    pub device_id: String,
-    pub auth_token: String,
+    pub device_id: DeviceId,
+    pub auth_token: AuthToken,
     pub accepted_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HeartbeatRequest {
-    pub device_id: String,
+    pub device_id: DeviceId,
     pub timestamp: DateTime<Utc>,
     pub agent_version: String,
     pub queue_depth: u32,
@@ -180,7 +182,7 @@ pub enum DeviceStatus {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandRequest {
     pub command_id: String,
-    pub device_id: String,
+    pub device_id: DeviceId,
     pub command_type: String,
     pub payload: Value,
     pub issued_at: DateTime<Utc>,
@@ -189,7 +191,7 @@ pub struct CommandRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandAck {
     pub command_id: String,
-    pub device_id: String,
+    pub device_id: DeviceId,
     pub status: CommandStatus,
     pub acknowledged_at: DateTime<Utc>,
     pub message: Option<String>,
@@ -232,8 +234,8 @@ mod tests {
     #[test]
     fn telemetry_event_serializes_contract_type_field() {
         let event = TelemetryEvent::new(
-            "edge-042",
-            "01JZ9X6N9VD4Y7Y3P2Z5F8K4QG",
+            DeviceId::new("edge-042").unwrap(),
+            EventId::new(),
             DateTime::parse_from_rfc3339("2026-06-18T19:42:10Z")
                 .unwrap()
                 .with_timezone(&Utc),
@@ -259,7 +261,7 @@ mod tests {
     #[test]
     fn registration_request_serializes_telemetry_profile_metadata() {
         let request = DeviceRegistrationRequest {
-            device_id: "edge-042".to_owned(),
+            device_id: DeviceId::new("edge-042").unwrap(),
             display_name: Some("Lab freezer".to_owned()),
             agent_version: "0.1.0".to_owned(),
             capabilities: vec!["telemetry".to_owned()],
@@ -296,16 +298,16 @@ mod tests {
     }
 
     #[test]
-    fn telemetry_event_rejects_missing_idempotency_key() {
+    fn telemetry_event_rejects_empty_type() {
         assert_eq!(
             TelemetryEvent::new(
-                "edge-042",
-                " ",
+                DeviceId::new("edge-042").unwrap(),
+                EventId::new(),
                 Utc::now(),
-                "sensor.reading",
+                " ",
                 json!({ "temperature_c": 41.2 }),
             ),
-            Err(ContractError::EmptyField { field: "event_id" })
+            Err(ContractError::EmptyField { field: "type" })
         );
     }
 
@@ -313,7 +315,7 @@ mod tests {
     fn telemetry_event_deserialization_rejects_invalid_contract() {
         let error = serde_json::from_value::<TelemetryEvent>(json!({
             "device_id": "edge-042",
-            "event_id": "event-042",
+            "event_id": EventId::new().to_string(),
             "timestamp": "2026-06-18T19:42:10Z",
             "type": " ",
             "schema_version": CURRENT_SCHEMA_VERSION,

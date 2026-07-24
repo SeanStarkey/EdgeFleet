@@ -92,7 +92,7 @@ Example envelope:
 ```json
 {
   "device_id": "edge-042",
-  "event_id": "01JZ9X6N9VD4Y7Y3P2Z5F8K4QG",
+  "event_id": "019f9656-5e97-72b0-ba3f-9ccde815d18a",
   "timestamp": "2026-06-18T19:42:10Z",
   "type": "sensor.reading",
   "schema_version": 1,

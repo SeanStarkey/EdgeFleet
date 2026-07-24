@@ -25,4 +25,4 @@ thiserror = "2.0.17"
 tokio = { version = "1.52.3", features = ["macros", "net", "rt-multi-thread", "signal"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-uuid = { version = "1.23.4", features = ["v4"] }
+uuid = { version = "1.23.4", features = ["v4", "v7"] }

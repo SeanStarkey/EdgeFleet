@@ -115,6 +115,8 @@ tests, and future dashboard API clients.
 Shared contracts should:
 
 - Keep operational fields typed.
+- Use validated `DeviceId`, `EventId`, and `AuthToken` newtypes instead of raw
+  strings. Event ids are UUIDv7 values so newly generated ids are sortable.
 - Put device-specific readings in `serde_json::Value`.
 - Preserve stable field names for API and event payloads.
 - Include validation for required identifiers and schema versions.
@@ -172,7 +174,7 @@ Telemetry events use a stable envelope:
 ```json
 {
   "device_id": "edge-042",
-  "event_id": "01JZ9X6N9VD4Y7Y3P2Z5F8K4QG",
+  "event_id": "019f9656-5e97-72b0-ba3f-9ccde815d18a",
   "timestamp": "2026-06-18T19:42:10Z",
   "type": "sensor.reading",
   "schema_version": 1,

@@ -9,18 +9,19 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
-use edgefleet_types::{DeviceRegistrationRequest, DeviceRegistrationResponse, TelemetryProfile};
-use uuid::Uuid;
+use edgefleet_types::{
+    AuthToken, DeviceId, DeviceRegistrationRequest, DeviceRegistrationResponse, TelemetryProfile,
+};
 
 /// A persisted device record held by the control plane.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeviceRecord {
-    pub device_id: String,
+    pub device_id: DeviceId,
     pub display_name: Option<String>,
     pub agent_version: String,
     pub capabilities: Vec<String>,
     pub telemetry_profile: TelemetryProfile,
-    pub auth_token: String,
+    pub auth_token: AuthToken,
     pub registered_at: DateTime<Utc>,
 }
 
@@ -33,7 +34,7 @@ pub enum RegistrationError {
 /// Thread-safe in-memory store of device records keyed by `device_id`.
 #[derive(Debug, Clone, Default)]
 pub struct DeviceRegistry {
-    devices: Arc<Mutex<HashMap<String, DeviceRecord>>>,
+    devices: Arc<Mutex<HashMap<DeviceId, DeviceRecord>>>,
 }
 
 impl DeviceRegistry {
@@ -51,9 +52,6 @@ impl DeviceRegistry {
         request: &DeviceRegistrationRequest,
         now: DateTime<Utc>,
     ) -> Result<DeviceRegistrationResponse, RegistrationError> {
-        if request.device_id.trim().is_empty() {
-            return Err(RegistrationError::EmptyField { field: "device_id" });
-        }
         if request.agent_version.trim().is_empty() {
             return Err(RegistrationError::EmptyField {
                 field: "agent_version",
@@ -69,7 +67,7 @@ impl DeviceRegistry {
                 agent_version: request.agent_version.clone(),
                 capabilities: request.capabilities.clone(),
                 telemetry_profile: request.telemetry_profile.clone(),
-                auth_token: mint_token(),
+                auth_token: AuthToken::generate(),
                 registered_at: now,
             });
 
@@ -93,17 +91,13 @@ impl DeviceRegistry {
     }
 
     /// Fetch a snapshot of a device record by id.
-    pub fn get(&self, device_id: &str) -> Option<DeviceRecord> {
+    pub fn get(&self, device_id: &DeviceId) -> Option<DeviceRecord> {
         self.devices
             .lock()
             .expect("registry mutex poisoned")
             .get(device_id)
             .cloned()
     }
-}
-
-fn mint_token() -> String {
-    format!("eftok_{}", Uuid::new_v4().simple())
 }
 
 #[cfg(test)]
@@ -115,7 +109,7 @@ mod tests {
 
     fn request(device_id: &str) -> DeviceRegistrationRequest {
         DeviceRegistrationRequest {
-            device_id: device_id.to_owned(),
+            device_id: DeviceId::new(device_id).unwrap(),
             display_name: Some("Test device".to_owned()),
             agent_version: "0.1.0".to_owned(),
             capabilities: vec!["telemetry".to_owned()],
@@ -147,8 +141,8 @@ mod tests {
 
         let response = registry.register(&request("edge-1"), now).unwrap();
 
-        assert_eq!(response.device_id, "edge-1");
-        assert!(response.auth_token.starts_with("eftok_"));
+        assert_eq!(response.device_id.as_str(), "edge-1");
+        assert!(response.auth_token.to_string().starts_with("eftok_"));
         assert_eq!(response.accepted_at, now);
         assert_eq!(registry.count(), 1);
     }
@@ -170,7 +164,7 @@ mod tests {
         assert_eq!(registry.count(), 1);
 
         // Mutable metadata is refreshed; identity stays stable.
-        let record = registry.get("edge-1").unwrap();
+        let record = registry.get(&DeviceId::new("edge-1").unwrap()).unwrap();
         assert_eq!(record.agent_version, "0.2.0");
         assert_eq!(record.capabilities, ["telemetry", "ota"]);
         assert_eq!(
@@ -193,16 +187,6 @@ mod tests {
 
         assert_ne!(a.auth_token, b.auth_token);
         assert_eq!(registry.count(), 2);
-    }
-
-    #[test]
-    fn empty_device_id_is_rejected() {
-        let registry = DeviceRegistry::new();
-        let error = registry
-            .register(&request("  "), Utc::now())
-            .expect_err("blank device id should be rejected");
-
-        assert_eq!(error, RegistrationError::EmptyField { field: "device_id" });
     }
 
     #[test]

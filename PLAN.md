@@ -83,7 +83,7 @@ Deliverables:
 - Completed: Agent registration includes telemetry profile metadata for declared event
   types and payload fields, while ingestion still accepts open-ended JSON
   payloads.
-- Shared newtype identifiers (`DeviceId`, `EventId`, `AuthToken`) in
+- Completed: Shared newtype identifiers (`DeviceId`, `EventId`, `AuthToken`) in
   `edgefleet-types` so invalid identifiers are unrepresentable, with `EventId`
   backed by a ULID or UUIDv7 so event ids are sortable and dedup-friendly for
   Phase 2 replay.
