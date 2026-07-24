@@ -87,6 +87,16 @@ Deliverables:
   `edgefleet-types` so invalid identifiers are unrepresentable, with `EventId`
   backed by a ULID or UUIDv7 so event ids are sortable and dedup-friendly for
   Phase 2 replay.
+- Immutable value interfaces for the remaining Phase 1 messages and snapshots:
+  `TelemetryProfile`, `TelemetryEventProfile`, `TelemetryFieldProfile`,
+  `DeviceRegistrationRequest`, `DeviceRegistrationResponse`,
+  `HeartbeatRequest`, `DeviceIdentity`, `AgentConfig`, and `StartupSnapshot`.
+  Fields are private, construction and deserialization enforce each type's
+  invariants, and callers receive read-only accessors. Updates create new values
+  rather than mutating an existing message or snapshot.
+- Encapsulated `DeviceRecord` mutation: identity fields (`device_id`,
+  `auth_token`, and `registered_at`) remain immutable while registration
+  metadata changes only through an explicit refresh method.
 - Control plane stores device records, heartbeats, and recent telemetry in
   PostgreSQL behind a `DeviceStore` trait (async fn in trait), keeping the
   in-memory registry as the test implementation and using `sqlx`
@@ -165,6 +175,9 @@ Deliverables:
   dispatch.
 - Remote command API and dashboard controls.
 - Agent command receiver with command acknowledgement.
+- Immutable `CommandRequest` and `CommandAck` wire values with validated
+  construction and deserialization, so retries and duplicate delivery cannot
+  change the meaning associated with an existing command or acknowledgement.
 - Command history and status tracking in the control plane, with the command
   lifecycle modeled as typed state transitions (transition methods on the
   status enum that reject invalid moves) rather than free-form status writes.
@@ -193,6 +206,10 @@ Deliverables:
 - Signed update artifact format and verification flow.
 - OTA metadata model: artifact, version, target group, rollout state, and
   rollback target.
+- Immutable OTA metadata values with validated construction and deserialization.
+  Hash, signature, artifact identity, and location remain bound together, with
+  a distinct verified type produced after successful cryptographic
+  verification.
 - Agent update checker and artifact downloader.
 - Canary rollout support.
 - Rollout pause, resume, cancel, and rollback operations, modeled as a typed
