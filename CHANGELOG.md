@@ -14,12 +14,15 @@ Work toward `v0.2.0-mvp`.
 - Edge agent registers with the control plane over HTTP (reqwest) and persists
   its device identity (device id, auth token, acceptance time) to a local state
   file, reusing it across restarts. Configurable via `EDGEFLEET_STATE_PATH`.
+- Agent registration includes telemetry profile metadata derived from the
+  configured sample payload, including field types, labels, units, display
+  order, and display hints for future dashboard rendering.
 - End-to-end registration integration test that boots the control plane and
   drives the agent registration flow, including idempotent re-registration.
 
 ## `v0.1.0-foundation` - 2026-06-23
 
-Phase 0 foundation is complete and ready to tag.
+Phase 0 foundation was completed and tagged.
 
 ### Added
 

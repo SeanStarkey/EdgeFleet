@@ -65,9 +65,8 @@ The complete demo will run a simulated fleet of 50 to 100 agents and show:
 
 ## Project Status
 
-Phase 0 foundation work is complete and ready for the
-`v0.1.0-foundation` milestone tag. The implementation roadmap lives in
-[PLAN.md](PLAN.md).
+Phase 0 foundation work is complete and tagged as `v0.1.0-foundation`. The
+implementation roadmap lives in [PLAN.md](PLAN.md).
 
 The Rust workspace has been scaffolded with:
 
