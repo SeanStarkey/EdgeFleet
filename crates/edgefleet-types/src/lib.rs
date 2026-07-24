@@ -14,14 +14,26 @@ pub enum ContractError {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "UncheckedTelemetryEvent")]
 pub struct TelemetryEvent {
-    pub device_id: String,
-    pub event_id: String,
-    pub timestamp: DateTime<Utc>,
+    device_id: String,
+    event_id: String,
+    timestamp: DateTime<Utc>,
     #[serde(rename = "type")]
-    pub event_type: String,
-    pub schema_version: u16,
-    pub payload: Value,
+    event_type: String,
+    schema_version: u16,
+    payload: Value,
+}
+
+#[derive(Deserialize)]
+struct UncheckedTelemetryEvent {
+    device_id: String,
+    event_id: String,
+    timestamp: DateTime<Utc>,
+    #[serde(rename = "type")]
+    event_type: String,
+    schema_version: u16,
+    payload: Value,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -65,15 +77,39 @@ impl TelemetryEvent {
         timestamp: DateTime<Utc>,
         event_type: impl Into<String>,
         payload: Value,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, ContractError> {
+        Self::try_from(UncheckedTelemetryEvent {
             device_id: device_id.into(),
             event_id: event_id.into(),
             timestamp,
             event_type: event_type.into(),
             schema_version: CURRENT_SCHEMA_VERSION,
             payload,
-        }
+        })
+    }
+
+    pub fn device_id(&self) -> &str {
+        &self.device_id
+    }
+
+    pub fn event_id(&self) -> &str {
+        &self.event_id
+    }
+
+    pub fn timestamp(&self) -> &DateTime<Utc> {
+        &self.timestamp
+    }
+
+    pub fn event_type(&self) -> &str {
+        &self.event_type
+    }
+
+    pub fn schema_version(&self) -> u16 {
+        self.schema_version
+    }
+
+    pub fn payload(&self) -> &Value {
+        &self.payload
     }
 
     pub fn validate(&self) -> Result<(), ContractError> {
@@ -86,6 +122,24 @@ impl TelemetryEvent {
         }
 
         Ok(())
+    }
+}
+
+impl TryFrom<UncheckedTelemetryEvent> for TelemetryEvent {
+    type Error = ContractError;
+
+    fn try_from(unchecked: UncheckedTelemetryEvent) -> Result<Self, Self::Error> {
+        let event = Self {
+            device_id: unchecked.device_id,
+            event_id: unchecked.event_id,
+            timestamp: unchecked.timestamp,
+            event_type: unchecked.event_type,
+            schema_version: unchecked.schema_version,
+            payload: unchecked.payload,
+        };
+        event.validate()?;
+
+        Ok(event)
     }
 }
 
@@ -189,13 +243,17 @@ mod tests {
                 "humidity": 0.61,
                 "fan_rpm": 2380
             }),
-        );
+        )
+        .unwrap();
 
-        let serialized = serde_json::to_value(event).unwrap();
+        let serialized = serde_json::to_value(&event).unwrap();
 
         assert_eq!(serialized["type"], "sensor.reading");
         assert_eq!(serialized["schema_version"], CURRENT_SCHEMA_VERSION);
         assert_eq!(serialized["payload"]["temperature_c"], 41.2);
+
+        let deserialized = serde_json::from_value::<TelemetryEvent>(serialized).unwrap();
+        assert_eq!(deserialized, event);
     }
 
     #[test]
@@ -239,18 +297,31 @@ mod tests {
 
     #[test]
     fn telemetry_event_rejects_missing_idempotency_key() {
-        let event = TelemetryEvent::new(
-            "edge-042",
-            " ",
-            Utc::now(),
-            "sensor.reading",
-            json!({ "temperature_c": 41.2 }),
-        );
-
         assert_eq!(
-            event.validate(),
+            TelemetryEvent::new(
+                "edge-042",
+                " ",
+                Utc::now(),
+                "sensor.reading",
+                json!({ "temperature_c": 41.2 }),
+            ),
             Err(ContractError::EmptyField { field: "event_id" })
         );
+    }
+
+    #[test]
+    fn telemetry_event_deserialization_rejects_invalid_contract() {
+        let error = serde_json::from_value::<TelemetryEvent>(json!({
+            "device_id": "edge-042",
+            "event_id": "event-042",
+            "timestamp": "2026-06-18T19:42:10Z",
+            "type": " ",
+            "schema_version": CURRENT_SCHEMA_VERSION,
+            "payload": { "temperature_c": 41.2 }
+        }))
+        .unwrap_err();
+
+        assert!(error.to_string().contains("type must not be empty"));
     }
 
     #[test]

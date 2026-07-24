@@ -17,11 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }),
             )
         })
-        .collect::<Vec<_>>();
-
-    for event in &events {
-        event.validate()?;
-    }
+        .collect::<Result<Vec<_>, _>>()?;
 
     println!("fleet-simulator scaffold generated {} events", events.len());
     println!("{}", serde_json::to_string_pretty(&events)?);

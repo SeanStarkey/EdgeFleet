@@ -142,8 +142,7 @@ impl EdgeAgent {
             now,
             DEFAULT_TELEMETRY_EVENT_TYPE,
             self.config.sample_payload.clone(),
-        );
-        telemetry.validate()?;
+        )?;
 
         Ok(StartupSnapshot {
             registration,
@@ -264,7 +263,7 @@ pub async fn run() -> Result<(), AgentError> {
     // transport slice that sends them follows the registration slice.
     tracing::debug!(
         heartbeat = ?snapshot.heartbeat,
-        telemetry_event_id = %snapshot.telemetry.event_id,
+        telemetry_event_id = %snapshot.telemetry.event_id(),
         "prepared heartbeat and telemetry payloads (transport slice pending)"
     );
 
@@ -567,13 +566,13 @@ mod tests {
         assert_eq!(snapshot.heartbeat.device_id, DEFAULT_DEVICE_ID);
         assert_eq!(snapshot.heartbeat.queue_depth, 0);
         assert_eq!(snapshot.heartbeat.status, DeviceStatus::Online);
-        assert_eq!(snapshot.telemetry.device_id, DEFAULT_DEVICE_ID);
-        assert_eq!(snapshot.telemetry.event_type, "sensor.reading");
+        assert_eq!(snapshot.telemetry.device_id(), DEFAULT_DEVICE_ID);
+        assert_eq!(snapshot.telemetry.event_type(), "sensor.reading");
         assert_eq!(
-            snapshot.telemetry.event_id,
+            snapshot.telemetry.event_id(),
             "edge-local-001-startup-1781811730000000"
         );
-        assert_eq!(snapshot.telemetry.payload, agent.config.sample_payload);
+        assert_eq!(snapshot.telemetry.payload(), &agent.config.sample_payload);
     }
 
     #[test]
