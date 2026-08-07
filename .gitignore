@@ -25,3 +25,4 @@ edge-agent-state.json
 .DS_Store
 .vscode/
 .idea/
+.claude/
